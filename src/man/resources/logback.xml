@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <property name="LOG_DIR" value="./log" />
+
+  <appender name="consoleAppender" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <!-- %l lowers performance -->
+      <!--<pattern>%d [%t] %-5p %l%n %m%n</pattern> -->
+      <charset>UTF-8</charset>
+      <pattern>%d [%t] %-5p %m%n</pattern>
+    </encoder>
+  </appender>
+  <appender name="FILE_A" class="ch.qos.logback.core.FileAppender">
+    <append>false</append>
+    <file>${LOG_DIR}/silvercat.log</file>
+    <encoder>
+      <charset>UTF-8</charset>
+      <pattern>%d [%t] %-5p %m%n</pattern>
+    </encoder>
+  </appender>
+
+  <logger name="org" level="debug" />
+  <logger name="jp" level="debug" />
+
+  <root level="debug">
+    <appender-ref ref="consoleAppender" />
+    <appender-ref ref="FILE_A" />
+  </root>
+
+</configuration>
+
