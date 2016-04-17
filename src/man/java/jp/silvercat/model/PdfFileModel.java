@@ -18,8 +18,12 @@ import jp.silvercat.util.IStatusCode;
 import jp.silvercat.util.ModelEvent;
 import jp.silvercat.util.PdfUtil;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @SuppressWarnings("serial")
 public class PdfFileModel implements IModel, Cloneable, Serializable {
+  private static final Logger LOG = LoggerFactory.getLogger(PdfFileModel.class);
 
   private File pdfFile = null;
   private int totalPageNumber = 0;
@@ -226,6 +230,8 @@ public class PdfFileModel implements IModel, Cloneable, Serializable {
 
   @Override
   public void close() {
+    LOG.debug(this.getClass().getName() + "#close()");
+
     for (PdfPageModel page : pages) {
       page.close();
     }

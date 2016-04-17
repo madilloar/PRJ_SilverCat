@@ -26,8 +26,6 @@ import jp.silvercat.util.ModelEvent;
 @SuppressWarnings("serial")
 public class PdfView extends JFrame implements IModelListener {
 
-  private PdfViewModel viewModel_;
-
   /**
    * Launch the application.
    */
@@ -52,15 +50,14 @@ public class PdfView extends JFrame implements IModelListener {
    */
   public PdfView(PdfViewModel viewModel) {
 
-    this.viewModel_ = viewModel;
-    initialize();
+    initialize(viewModel);
   }
 
   /**
    * Initialize the contents of the frame.
    */
   @SuppressWarnings("unchecked")
-  private void initialize() {
+  private void initialize(PdfViewModel viewModel) {
     setBounds(100, 100, 800, 600);
     setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     getContentPane().setLayout(new BorderLayout(0, 0));
@@ -69,29 +66,29 @@ public class PdfView extends JFrame implements IModelListener {
     this.setJMenuBar(menuBar);
 
     JMenu mnFile = new JMenu();
-    mnFile.addMenuListener(this.viewModel_.menuOpenHandler);
+    mnFile.addMenuListener(viewModel.menuOpenHandler);
     mnFile.setMnemonic(KeyEvent.VK_1);
     mnFile.setText("ファイル(1)"); // ALT+Fが反応しないので、ALT+1にした。
     menuBar.add(mnFile);
 
     // ファイルを開く(O)
     JMenuItem mntmFileOpen = new JMenuItem();
-    mntmFileOpen.setAction(this.viewModel_.fileOpenHandler);
+    mntmFileOpen.setAction(viewModel.fileOpenHandler);
     mnFile.add(mntmFileOpen);
 
     // 終了(X)
     JMenuItem mntmExit = new JMenuItem();
-    mntmExit.setAction(this.viewModel_.exitHandler);
+    mntmExit.setAction(viewModel.exitHandler);
     mnFile.add(mntmExit);
 
     JPanel pnlOriginal = new JPanel();
     pnlOriginal.setLayout(new BorderLayout(0, 0));
 
     // PDF ファイルのテーブル
-    JTable jtblPdfFiles = new JTable(this.viewModel_.originalPdfFileTableModel);
+    JTable jtblPdfFiles = new JTable(viewModel.originalPdfFileTableModel);
     jtblPdfFiles.setDefaultEditor(Object.class, null);
-    this.viewModel_.originalPdfFileListSelectionModel = jtblPdfFiles.getSelectionModel();
-    jtblPdfFiles.getSelectionModel().addListSelectionListener(this.viewModel_.originalPdfFileListSelectionHandler);
+    viewModel.originalPdfFileListSelectionModel = jtblPdfFiles.getSelectionModel();
+    jtblPdfFiles.getSelectionModel().addListSelectionListener(viewModel.originalPdfFileListSelectionHandler);
     JScrollPane scrlpnOriginalPdfFiles = new JScrollPane(jtblPdfFiles);
     scrlpnOriginalPdfFiles.setPreferredSize(new Dimension(640, 100));
     scrlpnOriginalPdfFiles.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
@@ -110,8 +107,8 @@ public class PdfView extends JFrame implements IModelListener {
     jlstOriginal.setFixedCellHeight(150);
     jlstOriginal.setVisibleRowCount(1);
     jlstOriginal.setLayoutOrientation(JList.VERTICAL_WRAP);
-    jlstOriginal.setModel(this.viewModel_.originalPdfPageImageListModel);
-    this.viewModel_.originalPdfPageImageListSelectionModel = jlstOriginal.getSelectionModel();
+    jlstOriginal.setModel(viewModel.originalPdfPageImageListModel);
+    viewModel.originalPdfPageImageListSelectionModel = jlstOriginal.getSelectionModel();
 
     JScrollPane scrlpnOriginalPdfPageImages = new JScrollPane(jlstOriginal);
     scrlpnOriginalPdfPageImages.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
@@ -122,17 +119,17 @@ public class PdfView extends JFrame implements IModelListener {
     JPanel pnlOriginalButtonArea = new JPanel();
     pnlOriginal.add(pnlOriginalButtonArea, BorderLayout.SOUTH);
     JButton btnOriginalAllSelect = new JButton();
-    btnOriginalAllSelect.setAction(this.viewModel_.selectAllOriginalPdfPageListHandler);
+    btnOriginalAllSelect.setAction(viewModel.selectAllOriginalPdfPageListHandler);
     pnlOriginalButtonArea.add(btnOriginalAllSelect);
 
     // 全選択解除ボタン
     JButton btnAllUnSelect = new JButton();
-    btnAllUnSelect.setAction(this.viewModel_.unSelectAllOriginalPdfPageListHandler);
+    btnAllUnSelect.setAction(viewModel.unSelectAllOriginalPdfPageListHandler);
     pnlOriginalButtonArea.add(btnAllUnSelect);
 
     // 編集エリアへの追加ボタン
     JButton btnAdd = new JButton();
-    btnAdd.setAction(this.viewModel_.addEditPdfPageListHandler);
+    btnAdd.setAction(viewModel.addEditPdfPageListHandler);
     pnlOriginalButtonArea.add(btnAdd);
 
     // 編集エリアのサムネイル画像のリスト
@@ -149,8 +146,8 @@ public class PdfView extends JFrame implements IModelListener {
     jlstEdit.setFixedCellHeight(150);
     jlstEdit.setVisibleRowCount(1);
     jlstEdit.setLayoutOrientation(JList.HORIZONTAL_WRAP);
-    jlstEdit.setModel(this.viewModel_.editPdfPageImageListModel);
-    this.viewModel_.editPdfPageImageSelectionModel = jlstEdit.getSelectionModel();
+    jlstEdit.setModel(viewModel.editPdfPageImageListModel);
+    viewModel.editPdfPageImageSelectionModel = jlstEdit.getSelectionModel();
     JScrollPane scrlpnEdit = new JScrollPane(jlstEdit);
     scrlpnEdit.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
     scrlpnEdit.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
@@ -164,17 +161,17 @@ public class PdfView extends JFrame implements IModelListener {
 
     // 削除ボタン
     JButton btnDelete = new JButton();
-    btnDelete.setAction(this.viewModel_.deleteEditPdfPageListHandler);
+    btnDelete.setAction(viewModel.deleteEditPdfPageListHandler);
     pnlEditButtonArea.add(btnDelete);
 
     // 回転ボタン
     JButton btnRotate = new JButton();
-    btnRotate.setAction(this.viewModel_.rotateEditPdfPageListHandler);
+    btnRotate.setAction(viewModel.rotateEditPdfPageListHandler);
     pnlEditButtonArea.add(btnRotate);
 
     // PDFファイル作成ボタン
     JButton btnCreate = new JButton();
-    btnCreate.setAction(this.viewModel_.createPdfHandler);
+    btnCreate.setAction(viewModel.createPdfHandler);
     pnlEditButtonArea.add(btnCreate);
 
     getContentPane().add(splitPane, BorderLayout.CENTER);
@@ -182,7 +179,7 @@ public class PdfView extends JFrame implements IModelListener {
     JProgressBar progressBar = new JProgressBar();
     // TODO:progress bar の setModel(model)やコンストラクタにmodelを渡すやり方だと
     // ViewのDesign画面でNullpointerExceptionが発生するので、Viewから取得したモデルを与えている。
-    this.viewModel_.progressBarModel = (DefaultBoundedRangeModel) progressBar.getModel();
+    viewModel.progressBarModel = (DefaultBoundedRangeModel) progressBar.getModel();
     getContentPane().add(progressBar, BorderLayout.SOUTH);
     progressBar.setStringPainted(true);
 
@@ -194,7 +191,7 @@ public class PdfView extends JFrame implements IModelListener {
   @Override
   public void modelChanged(ModelEvent event) {
     PdfViewModel model = (PdfViewModel) event.getSource();
-
+    // ViewModelからの通知がENDならば、アプリケーションを終了する。
     if (model.getStatus().equals(PdfViewModel.STATUS_CODE.END)) {
       System.exit(0);
     }

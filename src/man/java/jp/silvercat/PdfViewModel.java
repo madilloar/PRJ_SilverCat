@@ -241,10 +241,15 @@ public class PdfViewModel implements IModel {
       for (int row = 0; row < dtm.getRowCount(); row++) {
         for (int col = 0; col < dtm.getColumnCount(); col++) {
           Object o = dtm.getValueAt(row, col);
-          LOG.debug(KEY + ":" + o.getClass().getName());
+          if (o instanceof PdfFileModel) {
+            PdfFileModel pfm = (PdfFileModel) o;
+            LOG.debug(KEY + ":" + o.getClass().getName());
+            pfm.close();
+          }
         }
       }
-      
+
+      // ViewModel終了。Viewに終了を通知する。
       self_.close();
     }
   }
@@ -273,6 +278,8 @@ public class PdfViewModel implements IModel {
       ListSelectionModel lsm = self_.originalPdfPageImageListSelectionModel;
       lsm.clearSelection();
       int maxIndex = self_.originalPdfPageImageListModel.size() - 1;
+
+      LOG.debug(KEY + ":selected:" + maxIndex);
       lsm.setSelectionInterval(0, maxIndex);
     }
   }
@@ -374,7 +381,9 @@ public class PdfViewModel implements IModel {
       } else {
         int minIndex = self_.editPdfPageImageSelectionModel.getMinSelectionIndex();
         int maxIndex = self_.editPdfPageImageSelectionModel.getMaxSelectionIndex();
+        LOG.debug(KEY + ":" + minIndex + "," + maxIndex);
         for (int i = minIndex; i <= maxIndex; i++) {
+          LOG.debug(KEY + ":index[" + i + "] is " + self_.editPdfPageImageSelectionModel.isSelectedIndex(i));
           if (self_.editPdfPageImageSelectionModel.isSelectedIndex(i)) {
             self_.editPdfPageImageListModel.remove(i);
           }
@@ -607,6 +616,7 @@ public class PdfViewModel implements IModel {
 
   @Override
   public void close() {
+    LOG.debug(this.getClass().getName() + "#close()");
     this.status = STATUS_CODE.END;
     this.notifyListeners();
   }
