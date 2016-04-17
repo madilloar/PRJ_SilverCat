@@ -1,6 +1,5 @@
 package jp.silvercat.model;
 
-import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -10,30 +9,22 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
-
-import javax.swing.event.EventListenerList;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import jp.silvercat.util.IModel;
 import jp.silvercat.util.IModelListener;
+import jp.silvercat.util.IStatusCode;
 import jp.silvercat.util.ModelEvent;
 import jp.silvercat.util.PdfUtil;
 
 @SuppressWarnings("serial")
 public class PdfFileModel implements IModel, Cloneable, Serializable {
-  public enum STATUS_CODE {
-    LOADING, LOADEND, ADD_PAGE_PROCESSING, ADD_PAGE_PROCESSEND, TEMP_PDF_PAGE_PROCESSING, TEMP_PDF_PAGE_PROCESSEND, CREATE_PDF_FILE_PROCESSING, CREATE_PDF_FILE_PROCESSEND
-  }
-
-  private EventListenerList listeners = new EventListenerList();
-  ModelEvent event = null;
 
   private File pdfFile = null;
   private int totalPageNumber = 0;
   private int processingPageNumber = 0;
   private List<PdfPageModel> pages = null;
-  private STATUS_CODE status = null;
   private PdfFileModel self_ = null;
 
   public PdfFileModel() {
@@ -43,15 +34,11 @@ public class PdfFileModel implements IModel, Cloneable, Serializable {
   public PdfFileModel(File newPdfFile) {
     this();
     this.pdfFile = newPdfFile;
-    this.pages = new ArrayList<PdfPageModel>();
+    this.pages = new CopyOnWriteArrayList<PdfPageModel>();
   }
 
   public int getProcessingPageNumber() {
     return processingPageNumber;
-  }
-
-  public STATUS_CODE getStatus() {
-    return status;
   }
 
   public int getTotalPageNumber() {
@@ -64,7 +51,7 @@ public class PdfFileModel implements IModel, Cloneable, Serializable {
     this.totalPageNumber++;
     this.processingPageNumber = this.totalPageNumber;
     this.status = STATUS_CODE.ADD_PAGE_PROCESSEND;
-    this.modelChanged();
+    this.notifyListeners();
   }
 
   @SuppressWarnings("unchecked")
@@ -74,7 +61,7 @@ public class PdfFileModel implements IModel, Cloneable, Serializable {
     this.totalPageNumber = pages.size();
     this.processingPageNumber = this.totalPageNumber;
     this.status = STATUS_CODE.ADD_PAGE_PROCESSEND;
-    this.modelChanged();
+    this.notifyListeners();
   }
 
   public void createPdfFile() throws IOException {
@@ -88,17 +75,17 @@ public class PdfFileModel implements IModel, Cloneable, Serializable {
         page.createTempPdfThisPage(outputDir.toFile());
         this.processingPageNumber = i;
         // 通知
-        this.modelChanged();
+        this.notifyListeners();
       }
       this.status = STATUS_CODE.TEMP_PDF_PAGE_PROCESSEND;
-      this.modelChanged();
+      this.notifyListeners();
 
       // PDFファイルをマージする
       this.status = STATUS_CODE.CREATE_PDF_FILE_PROCESSING;
       PdfUtil u = new PdfUtil();
       u.mergePdfPageModelToPdfFile(pages, this.pdfFile);
       this.status = STATUS_CODE.CREATE_PDF_FILE_PROCESSEND;
-      this.modelChanged();
+      this.notifyListeners();
     } finally {
       ;
     }
@@ -111,12 +98,13 @@ public class PdfFileModel implements IModel, Cloneable, Serializable {
 
     // PdfUtilの画像処理に時間がかかるので、進捗バー用のリスナーを用意
     IModelListener ml = new IModelListener() {
+      @Override
       public void modelChanged(ModelEvent event) {
         PdfUtil model = (PdfUtil) event.getSource();
         if (model.getStatus().equals(PdfUtil.STATUS_CODE.LOAD_PDF_START)) {
           self_.totalPageNumber = model.getProcessDocumentPagesSize();
           self_.processingPageNumber = model.getProcessingPageNumber();
-          self_.modelChanged();
+          self_.notifyListeners();
           return;
         }
         if (model.getStatus().equals(PdfUtil.STATUS_CODE.LOAD_PDF_END)) {
@@ -126,14 +114,14 @@ public class PdfFileModel implements IModel, Cloneable, Serializable {
     };
     PdfUtil u = new PdfUtil();
     u.addModelListener(ml);
-    List<PdfPageModel> pageModels = u.loadPdf(file, BufferedImage.TYPE_BYTE_INDEXED);
+    List<PdfPageModel> pageModels = u.loadPdf(file);
 
     this.totalPageNumber = pageModels.size();
     this.pages = pageModels;
 
     // Modelの状態が変化したのでリスナーに通知する。
     this.status = STATUS_CODE.LOADEND;
-    this.modelChanged();
+    this.notifyListeners();
   }
 
   public List<PdfPageModel> getPages() {
@@ -144,22 +132,7 @@ public class PdfFileModel implements IModel, Cloneable, Serializable {
     return new Object[] { this.pdfFile.getName(), this.totalPageNumber, this };
   }
 
-  protected void modelChanged() {
-
-    // Guaranteed to return a non-null array
-    Object[] listeners = this.listeners.getListenerList();
-    // Process the listeners last to first, notifying
-    // those that are interested in this event
-    for (int i = listeners.length - 2; i >= 0; i -= 2) {
-      if (listeners[i] == IModelListener.class) {
-        // Lazily create the event:
-        if (event == null)
-          event = new ModelEvent(this);
-        ((IModelListener) listeners[i + 1]).modelChanged(event);
-      }
-    }
-  }
-
+  @Override
   public PdfPageModel clone() {
     try {
       return (PdfPageModel) super.clone();
@@ -184,6 +157,7 @@ public class PdfFileModel implements IModel, Cloneable, Serializable {
     }
   }
 
+  @Override
   public boolean equals(Object anObject) {
     if (this == anObject) {
       return true;
@@ -199,21 +173,64 @@ public class PdfFileModel implements IModel, Cloneable, Serializable {
     return this.toString().compareTo(another.toString());
   }
 
+  @Override
   public String toString() {
     return this.pdfFile.toString() + "," + this.totalPageNumber;
   }
 
+  @Override
   public int hashCode() {
     return toString().hashCode();
   }
 
+  //
   // IModelインターフェースの実装
-  public void addModelListener(IModelListener l) {
-    this.listeners.add(IModelListener.class, l);
+  //
+  // スレッドセーフなリストなので、addとremoveが頻繁にあると、遅くなるが、
+  // 検索は速いListとのこと。
+  private List<IModelListener> listeners = new CopyOnWriteArrayList<IModelListener>();
+  private ModelEvent event = null;
+  private IStatusCode status = null;
+
+  public enum STATUS_CODE implements IStatusCode {
+    LOADING, LOADEND, ADD_PAGE_PROCESSING, ADD_PAGE_PROCESSEND, TEMP_PDF_PAGE_PROCESSING, TEMP_PDF_PAGE_PROCESSEND, CREATE_PDF_FILE_PROCESSING, CREATE_PDF_FILE_PROCESSEND, END;
   }
 
+  @Override
+  public void addModelListener(IModelListener l) {
+    this.listeners.add(l);
+  }
+
+  /**
+   * リスナー達に状態変化を通知する。
+   */
+  @Override
+  public void notifyListeners() {
+    for (IModelListener listener : listeners) {
+      if (this.event == null) {
+        this.event = new ModelEvent(this);
+      }
+      listener.modelChanged(this.event);
+    }
+  }
+
+  @Override
+  public IStatusCode getStatus() {
+    return status;
+  }
+
+  @Override
   public void removeModelListner(IModelListener l) {
-    this.listeners.remove(IModelListener.class, l);
+    this.listeners.remove(l);
+  }
+
+  @Override
+  public void close() {
+    for (PdfPageModel page : pages) {
+      page.close();
+    }
+    this.status = STATUS_CODE.END;
+    this.notifyListeners();
   }
 
 }

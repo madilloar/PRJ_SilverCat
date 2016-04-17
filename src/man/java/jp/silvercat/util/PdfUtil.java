@@ -6,17 +6,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import javax.swing.event.EventListenerList;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import jp.silvercat.model.PdfPageModel;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.pdfbox.exceptions.COSVisitorException;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -24,6 +20,8 @@ import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
 import org.apache.pdfbox.pdmodel.encryption.BadSecurityHandlerException;
 import org.apache.pdfbox.pdmodel.encryption.StandardProtectionPolicy;
 import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.pdf.PdfReader;
@@ -33,27 +31,8 @@ public class PdfUtil implements IModel {
   /**
    * Log instance.
    */
-  private static final Log LOG = LogFactory.getLog(PdfUtil.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PdfUtil.class);
 
-  /**
-   * ステータスコードのenum。
-   */
-  public enum STATUS_CODE {
-    LOAD_PDF_START, LOAD_PDF_END, CREATE_PDF_THIS_PAGE_NUMBER_START, CREATE_PDF_THIS_PAGE_NUMBER_END, MERGE_PDF_FILE_START, MERGE_PDF_FILE_END
-  }
-
-  /**
-   * 処理状況を監視するリスナーを保存。
-   */
-  private EventListenerList listeners = new EventListenerList();
-  /**
-   * 処理状況を通知するためのイベントオブジェクト。
-   */
-  private ModelEvent event = null;
-  /**
-   * ステータス。
-   */
-  private STATUS_CODE status = null;
   // 進捗状況通知用変数
   /**
    * 現在処理しているPDFファイルの全ページ数。
@@ -69,15 +48,6 @@ public class PdfUtil implements IModel {
    */
   public PdfUtil() {
 
-  }
-
-  /**
-   * ステータスコード取得。
-   * 
-   * @return ステータスコード。
-   */
-  public STATUS_CODE getStatus() {
-    return this.status;
   }
 
   /**
@@ -242,9 +212,22 @@ public class PdfUtil implements IModel {
       }
     }
     this.status = STATUS_CODE.CREATE_PDF_THIS_PAGE_NUMBER_END;
-    this.modelChanged();
+    this.notifyListeners();
 
     return outputPdfFile;
+  }
+
+  /**
+   * PDFファイルを読み、PDFページモデルのListとして返します。 PDFページモデルにはページのサムネイル画像を保持します。
+   * 時間のかかる処理なので、1ページ処理するごとにリスナーに通知します。
+   * サムネイル画像の画像タイプは、BufferedImage.TYPE_BYTE_INDEXEDで作ります。
+   * 
+   * @param inputPdfFile
+   *          PDFファイルのFileオブジェクト。
+   * @return PDFページモデルのListとして返します。
+   */
+  public List<PdfPageModel> loadPdf(File inputPdfFile) {
+    return loadPdf(inputPdfFile, BufferedImage.TYPE_BYTE_INDEXED);
   }
 
   /**
@@ -260,7 +243,7 @@ public class PdfUtil implements IModel {
   public List<PdfPageModel> loadPdf(File inputPdfFile, int imageType) {
     this.status = STATUS_CODE.LOAD_PDF_START;
 
-    List<PdfPageModel> list = new ArrayList<PdfPageModel>();
+    List<PdfPageModel> list = new CopyOnWriteArrayList<PdfPageModel>();
     PDDocument document = null;
     try {
       document = this.parseDocument(inputPdfFile);
@@ -291,7 +274,7 @@ public class PdfUtil implements IModel {
         list.add(pageModel);
         // Model Changed Notify
         this.processingPageNumber = i;
-        this.modelChanged();
+        this.notifyListeners();
       }
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -316,7 +299,7 @@ public class PdfUtil implements IModel {
    * @return PDFファイルの各ページをイメージListとして返します。
    */
   public List<BufferedImage> pdfToImage(File inputPdfFile, int imageType) {
-    List<BufferedImage> list = new ArrayList<BufferedImage>();
+    List<BufferedImage> list = new CopyOnWriteArrayList<BufferedImage>();
     PDDocument document = null;
     try {
       document = this.parseDocument(inputPdfFile);
@@ -427,36 +410,76 @@ public class PdfUtil implements IModel {
     return fileName;
   }
 
+  //
+  // IModelインターフェースの実装
+  //
   /**
-   * リスナーに変更を通知します。
+   * 処理状況を監視するリスナーを保存。
    */
-  protected void modelChanged() {
-    // Guaranteed to return a non-null array
-    Object[] listeners = this.listeners.getListenerList();
-    // Process the listeners last to first, notifying
-    // those that are interested in this event
-    for (int i = listeners.length - 2; i >= 0; i -= 2) {
-      if (listeners[i] == IModelListener.class) {
-        // Lazily create the event:
-        if (event == null)
-          event = new ModelEvent(this);
-        ((IModelListener) listeners[i + 1]).modelChanged(event);
-      }
-    }
+  private List<IModelListener> listeners = new CopyOnWriteArrayList<IModelListener>();
+  /**
+   * 処理状況を通知するためのイベントオブジェクト。
+   */
+  private ModelEvent event = null;
+
+  /**
+   * ステータスコードのenum。
+   */
+  public enum STATUS_CODE implements IStatusCode {
+    LOAD_PDF_START, LOAD_PDF_END, CREATE_PDF_THIS_PAGE_NUMBER_START, CREATE_PDF_THIS_PAGE_NUMBER_END, MERGE_PDF_FILE_START, MERGE_PDF_FILE_END, END;
   }
 
-  // IModelインターフェースの実装
+  /**
+   * ステータス。
+   */
+  private IStatusCode status = null;
+
   /**
    * リスナーを登録します。
    */
+  @Override
   public void addModelListener(IModelListener l) {
-    this.listeners.add(IModelListener.class, l);
+    this.listeners.add(l);
+  }
+
+  /**
+   * リスナーに変更を通知します。
+   */
+
+  @Override
+  public void notifyListeners() {
+    for (IModelListener listener : listeners) {
+      if (this.event == null) {
+        this.event = new ModelEvent(this);
+      }
+      listener.modelChanged(this.event);
+    }
+  }
+
+  /**
+   * ステータスコード取得。
+   * 
+   * @return ステータスコード。
+   */
+  @Override
+  public IStatusCode getStatus() {
+    return this.status;
   }
 
   /**
    * リスナーを解除します。
    */
+  @Override
   public void removeModelListner(IModelListener l) {
-    this.listeners.remove(IModelListener.class, l);
+    this.listeners.remove(l);
+  }
+
+  /**
+   * クローズ処理。
+   */
+  @Override
+  public void close() {
+    this.status = STATUS_CODE.END;
+    this.notifyListeners();
   }
 }

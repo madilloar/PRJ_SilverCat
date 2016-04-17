@@ -20,8 +20,11 @@ import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.ScrollPaneConstants;
 
+import jp.silvercat.util.IModelListener;
+import jp.silvercat.util.ModelEvent;
+
 @SuppressWarnings("serial")
-public class PdfView extends JFrame {
+public class PdfView extends JFrame implements IModelListener {
 
   private PdfViewModel viewModel_;
 
@@ -30,12 +33,14 @@ public class PdfView extends JFrame {
    */
   public static void main(String[] args) {
     EventQueue.invokeLater(new Runnable() {
+      @Override
       public void run() {
         try {
           PdfViewModel viewModel = new PdfViewModel();
           PdfView view = new PdfView(viewModel);
+          viewModel.addModelListener(view);
           view.setVisible(true);
-        } catch (Exception e) {
+        } catch (Throwable e) {
           e.printStackTrace();
         }
       }
@@ -66,7 +71,7 @@ public class PdfView extends JFrame {
     JMenu mnFile = new JMenu();
     mnFile.addMenuListener(this.viewModel_.menuOpenHandler);
     mnFile.setMnemonic(KeyEvent.VK_1);
-    mnFile.setText("ファイル(1)");// ALT+Fが反応しないので、ALT+1にした。
+    mnFile.setText("ファイル(1)"); // ALT+Fが反応しないので、ALT+1にした。
     menuBar.add(mnFile);
 
     // ファイルを開く(O)
@@ -182,4 +187,17 @@ public class PdfView extends JFrame {
     progressBar.setStringPainted(true);
 
   }
+
+  //
+  // IModelListener
+  //
+  @Override
+  public void modelChanged(ModelEvent event) {
+    PdfViewModel model = (PdfViewModel) event.getSource();
+
+    if (model.getStatus().equals(PdfViewModel.STATUS_CODE.END)) {
+      System.exit(0);
+    }
+  }
+
 }

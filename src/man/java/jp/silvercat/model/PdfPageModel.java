@@ -13,41 +13,31 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
-import javax.swing.event.EventListenerList;
 
 import jp.silvercat.util.IModel;
 import jp.silvercat.util.IModelListener;
+import jp.silvercat.util.IStatusCode;
 import jp.silvercat.util.ModelEvent;
 import jp.silvercat.util.PdfUtil;
 
 @SuppressWarnings("serial")
 public class PdfPageModel implements IModel, Icon, Cloneable, Serializable {
 
-  public enum STATUS_CODE {
-    PROCESSING, PROCESSEND
-  }
-
-  private EventListenerList listeners = new EventListenerList();
-  ModelEvent event = null;
-
   private File pdfFile = null;
   private int pageNumber = 0;
   private ImageIcon pdfPageImage = null;
   private int rotation = 0;
-  private STATUS_CODE status = null;
 
   public PdfPageModel(File pdfFile, int pageNumber, Image img, int rotation) {
     this.pdfFile = pdfFile;
     this.pageNumber = pageNumber;
     this.pdfPageImage = new ImageIcon(img);
     this.rotation = rotation;
-  }
-
-  public STATUS_CODE getStatus() {
-    return status;
   }
 
   public File getPdfFile() {
@@ -88,7 +78,7 @@ public class PdfPageModel implements IModel, Icon, Cloneable, Serializable {
 
     this.status = STATUS_CODE.PROCESSEND;
     // 状態変化をリスナーに通知する。
-    this.modelChanged();
+    this.notifyListeners();
   }
 
   public File createTempPdfThisPage(File outputDir) throws IOException {
@@ -99,25 +89,11 @@ public class PdfPageModel implements IModel, Icon, Cloneable, Serializable {
     this.pdfFile = outputPdfFile;
     this.pageNumber = 1;
     this.status = STATUS_CODE.PROCESSEND;
-    this.modelChanged();
+    this.notifyListeners();
     return this.pdfFile;
   }
 
-  protected void modelChanged() {
-    // Guaranteed to return a non-null array
-    Object[] listeners = this.listeners.getListenerList();
-    // Process the listeners last to first, notifying
-    // those that are interested in this event
-    for (int i = listeners.length - 2; i >= 0; i -= 2) {
-      if (listeners[i] == IModelListener.class) {
-        // Lazily create the event:
-        if (event == null)
-          event = new ModelEvent(this);
-        ((IModelListener) listeners[i + 1]).modelChanged(event);
-      }
-    }
-  }
-
+  @Override
   public PdfPageModel clone() {
     try {
       return (PdfPageModel) super.clone();
@@ -141,10 +117,11 @@ public class PdfPageModel implements IModel, Icon, Cloneable, Serializable {
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
     }
-    this.modelChanged();
+    this.notifyListeners();
     return result;
   }
 
+  @Override
   public boolean equals(Object anObject) {
     if (this == anObject) {
       return true;
@@ -165,6 +142,7 @@ public class PdfPageModel implements IModel, Icon, Cloneable, Serializable {
    * 
    * @return このオブジェクトの文字列を返します。
    */
+  @Override
   public String toString() {
     return this.pdfFile.toString() + "," + this.pageNumber + "," + this.rotation;
   }
@@ -174,6 +152,7 @@ public class PdfPageModel implements IModel, Icon, Cloneable, Serializable {
    * 
    * @return ハッシュコードを返します。
    */
+  @Override
   public int hashCode() {
     return toString().hashCode();
   }
@@ -182,25 +161,64 @@ public class PdfPageModel implements IModel, Icon, Cloneable, Serializable {
   // Icon インターフェースの実装。
   // JListにPDFページのサムネイル画像を表示するためのインターフェース。
   //
+  @Override
   public void paintIcon(Component c, Graphics g, int x, int y) {
     this.pdfPageImage.paintIcon(c, g, x, y);
   }
 
+  @Override
   public int getIconWidth() {
     return this.pdfPageImage.getIconWidth();
   }
 
+  @Override
   public int getIconHeight() {
     return this.pdfPageImage.getIconHeight();
   }
 
+  //
   // IModelインターフェースの実装
-  public void addModelListener(IModelListener l) {
-    this.listeners.add(IModelListener.class, l);
+  //
+  private List<IModelListener> listeners = new CopyOnWriteArrayList<IModelListener>();
+  private ModelEvent event = null;
+  private IStatusCode status = null;
+
+  public enum STATUS_CODE implements IStatusCode {
+    PROCESSING, PROCESSEND;
   }
 
+  @Override
+  public void addModelListener(IModelListener l) {
+    this.listeners.add(l);
+  }
+
+  /**
+   * リスナー達に状態変化を通知する。
+   */
+  @Override
+  public void notifyListeners() {
+    for (IModelListener listener : listeners) {
+      if (this.event == null) {
+        this.event = new ModelEvent(this);
+      }
+      listener.modelChanged(this.event);
+    }
+  }
+
+  @Override
+  public IStatusCode getStatus() {
+    return status;
+  }
+
+  @Override
   public void removeModelListner(IModelListener l) {
-    this.listeners.remove(IModelListener.class, l);
+    this.listeners.remove(l);
+  }
+
+  @Override
+  public void close() {
+    this.status = STATUS_CODE.PROCESSEND;
+    this.notifyListeners();
   }
 
 }

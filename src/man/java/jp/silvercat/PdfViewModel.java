@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Vector;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -26,14 +27,15 @@ import javax.swing.table.DefaultTableModel;
 
 import jp.silvercat.model.PdfFileModel;
 import jp.silvercat.model.PdfPageModel;
+import jp.silvercat.util.IModel;
 import jp.silvercat.util.IModelListener;
+import jp.silvercat.util.IStatusCode;
 import jp.silvercat.util.ModelEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-//public class PdfViewModel implements IModel {
-public class PdfViewModel {
+public class PdfViewModel implements IModel {
   private static final Logger LOG = LoggerFactory.getLogger(PdfViewModel.class);
 
   private PdfViewModel self_ = null;
@@ -76,7 +78,7 @@ public class PdfViewModel {
     //
     Object[] columnNames = new String[] { "ファイル名", "ページ数", "ファイルパス" };
     this.originalPdfFileTableModel.setColumnIdentifiers(columnNames);
-
+    this.status = STATUS_CODE.START;
   }
 
   //
@@ -87,9 +89,11 @@ public class PdfViewModel {
   private synchronized void addPdfFile(final File file) {
     // Modelの更新には時間がかかるので、別スレッドを使う。
     ex.execute(new Runnable() {
+      @Override
       public void run() {
         // callbackの定義
         IModelListener ml = new IModelListener() {
+          @Override
           public void modelChanged(ModelEvent event) {
             PdfFileModel model = (PdfFileModel) event.getSource();
 
@@ -182,6 +186,7 @@ public class PdfViewModel {
       putValue(Action.MNEMONIC_KEY, KeyEvent.VK_O);
     }
 
+    @Override
     public synchronized void actionPerformed(ActionEvent event) {
       LOG.debug(KEY + ":" + event);
       JFileChooser filechooser = new JFileChooser(new File(".").getPath());
@@ -210,7 +215,7 @@ public class PdfViewModel {
   }
 
   /**
-   * PDFファイルを開く。 ファイルダイアログが表示されるので、Viewに持ち込むべきロジックかもしれない。
+   * このアプリケーションを終了します。
    */
   @SuppressWarnings("serial")
   protected class ExitHandler extends AbstractAction {
@@ -221,8 +226,26 @@ public class PdfViewModel {
       putValue(Action.MNEMONIC_KEY, KeyEvent.VK_X);
     }
 
+    @Override
     public synchronized void actionPerformed(ActionEvent event) {
       LOG.debug(KEY + ":" + event);
+      if (!KEY.equals(event.getActionCommand())) {
+        return;
+      }
+      if (self_.originalPdfFileTableModel == null) {
+        return;
+      }
+
+      // リソースの解放
+      DefaultTableModel dtm = self_.originalPdfFileTableModel;
+      for (int row = 0; row < dtm.getRowCount(); row++) {
+        for (int col = 0; col < dtm.getColumnCount(); col++) {
+          Object o = dtm.getValueAt(row, col);
+          LOG.debug(KEY + ":" + o.getClass().getName());
+        }
+      }
+      
+      self_.close();
     }
   }
 
@@ -238,6 +261,7 @@ public class PdfViewModel {
       putValue(Action.MNEMONIC_KEY, KeyEvent.VK_A);
     }
 
+    @Override
     public void actionPerformed(ActionEvent event) {
       if (!KEY.equals(event.getActionCommand())) {
         return;
@@ -265,6 +289,7 @@ public class PdfViewModel {
       putValue(Action.MNEMONIC_KEY, KeyEvent.VK_U);
     }
 
+    @Override
     public void actionPerformed(ActionEvent event) {
       if (!KEY.equals(event.getActionCommand())) {
         return;
@@ -289,6 +314,7 @@ public class PdfViewModel {
       putValue(Action.MNEMONIC_KEY, KeyEvent.VK_P);
     }
 
+    @Override
     public void actionPerformed(ActionEvent event) {
       if (!KEY.equals(event.getActionCommand())) {
         return;
@@ -302,6 +328,7 @@ public class PdfViewModel {
       } else {
         // 重くなりそうな処理なので別スレッドで動かす。
         ex.execute(new Runnable() {
+          @Override
           public void run() {
             // progress bar を使うほど遅くなかったのでリスナーは使わない。
 
@@ -333,6 +360,7 @@ public class PdfViewModel {
 
     }
 
+    @Override
     public void actionPerformed(ActionEvent event) {
       if (!KEY.equals(event.getActionCommand())) {
         return;
@@ -367,6 +395,7 @@ public class PdfViewModel {
       putValue(Action.MNEMONIC_KEY, KeyEvent.VK_R);
     }
 
+    @Override
     public void actionPerformed(ActionEvent event) {
       if (!KEY.equals(event.getActionCommand())) {
         return;
@@ -387,6 +416,7 @@ public class PdfViewModel {
             final PdfPageModel ppm = (PdfPageModel) self_.editPdfPageImageListModel.get(index);
             // ページ回転処理結果を受けるcallbackを定義。
             IModelListener iml = new IModelListener() {
+              @Override
               public void modelChanged(ModelEvent event) {
                 PdfPageModel mod = (PdfPageModel) event.getSource();
                 // 返ってきたcallbackでPDFファイル編集エリアのページを再度描画しなおす。
@@ -404,6 +434,7 @@ public class PdfViewModel {
             // Modelの状態を変化させる(ページ回転)。
             // Modelの状態変化に時間がかかるかもなので、別スレッドで動かす。
             ex.execute(new Runnable() {
+              @Override
               public void run() {
                 ppm.rotate();
               }
@@ -426,12 +457,14 @@ public class PdfViewModel {
       putValue(Action.MNEMONIC_KEY, KeyEvent.VK_C);
     }
 
+    @Override
     public void actionPerformed(ActionEvent event) {
       if (!KEY.equals(event.getActionCommand())) {
         return;
       }
 
       ex.execute(new Runnable() {
+        @Override
         public void run() {
           if (self_.editPdfPageImageListModel == null) {
             return;
@@ -475,6 +508,7 @@ public class PdfViewModel {
             self_.progressBarModel.setMaximum(pagesSize);
             self_.progressBarModel.setValue(0);
             newPdfFile.addModelListener(new IModelListener() {
+              @Override
               public void modelChanged(ModelEvent event) {
                 PdfFileModel model = (PdfFileModel) event.getSource();
                 int processPage = self_.progressBarModel.getValue();
@@ -507,6 +541,7 @@ public class PdfViewModel {
    * オリジナルPDFファイルリストで選択された行のページを再描画する。
    */
   protected class OriginalPdfFileListSelectionHandler implements ListSelectionListener {
+    @Override
     public void valueChanged(ListSelectionEvent event) {
       boolean isAdjusting = event.getValueIsAdjusting();
       // リストをクリックして離したときは直ぐにreturn
@@ -534,45 +569,45 @@ public class PdfViewModel {
     }
   }
 
+  //
   // IModelインターフェースの実装
-  // 以下、コメントアウトにした。
-  // 理由は、PdfViewModelオブジェクトを監視するオブジェクトがいないから。
-  // Viewが通知を受け取って状態を変更することを考えたが、
-  // PdfViewModelオブジェクトが保持しているSwingコンポーネントをViewが監視しているので、
-  // あえて何かする必要がないため。
   //
-  // private EventListenerList listeners = new EventListenerList();
-  // private ModelEvent event = null;
-  // private STATUS_CODE status = null;
-  //
-  // public enum STATUS_CODE {
-  // START, END
-  // }
-  //
-  // public STATUS_CODE getStatus() {
-  // return status;
-  // }
-  //
-  // public void addModelListener(IModelListener l) {
-  // this.listeners.add(IModelListener.class, l);
-  // }
-  //
-  // public void removeModelListner(IModelListener l) {
-  // this.listeners.remove(IModelListener.class, l);
-  // }
-  //
-  // protected void modelChanged() {
-  // // Guaranteed to return a non-null array
-  // Object[] listeners = this.listeners.getListenerList();
-  // // Process the listeners last to first, notifying
-  // // those that are interested in this event
-  // for (int i = listeners.length - 2; i >= 0; i -= 2) {
-  // if (listeners[i] == IModelListener.class) {
-  // // Lazily create the event:
-  // if (event == null)
-  // event = new ModelEvent(this);
-  // ((IModelListener) listeners[i + 1]).modelChanged(event);
-  // }
-  // }
-  // }
+  private List<IModelListener> listeners = new CopyOnWriteArrayList<IModelListener>();
+  private ModelEvent event = null;
+  private IStatusCode status = null;
+
+  public enum STATUS_CODE implements IStatusCode {
+    START, END
+  }
+
+  @Override
+  public IStatusCode getStatus() {
+    return status;
+  }
+
+  @Override
+  public void addModelListener(IModelListener l) {
+    this.listeners.add(l);
+  }
+
+  @Override
+  public void removeModelListner(IModelListener l) {
+    this.listeners.remove(l);
+  }
+
+  @Override
+  public void notifyListeners() {
+    for (IModelListener listener : this.listeners) {
+      if (this.event == null) {
+        this.event = new ModelEvent(this);
+      }
+      listener.modelChanged(this.event);
+    }
+  }
+
+  @Override
+  public void close() {
+    this.status = STATUS_CODE.END;
+    this.notifyListeners();
+  }
 }
