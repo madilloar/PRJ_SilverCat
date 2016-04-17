@@ -42,8 +42,8 @@ public class PdfUtilTest {
   @Test
   public void test01() throws IOException {
     PdfUtil target = new PdfUtil();
-    File pdfFile = new File("./src/test/recources/decrypted.pdf");
-    File outDir = new File("./src/test/recources/SetPermission.pdf");
+    File pdfFile = new File("./src/test/resources/decrypted.pdf");
+    File outDir = new File("./src/test/resources/SetPermission.pdf");
     PDDocument orgDocument = null;
     try {
       orgDocument = PDDocument.load(pdfFile);
@@ -62,8 +62,8 @@ public class PdfUtilTest {
   @Test
   public void test02() throws IOException {
     PdfUtil target = new PdfUtil();
-    File pdfFile = new File("./src/test/recources/decrypted.pdf");
-    File outDir = new File("./src/test/recources/SetUserPassword.pdf");
+    File pdfFile = new File("./src/test/resources/decrypted.pdf");
+    File outDir = new File("./src/test/resources/SetUserPassword.pdf");
     PDDocument orgDocument = null;
     try {
       orgDocument = PDDocument.load(pdfFile);
@@ -82,8 +82,8 @@ public class PdfUtilTest {
   @Test
   public void test03() throws IOException {
     PdfUtil target = new PdfUtil();
-    File in = new File("./src/test/recources/SetPermission.pdf");
-    File out = new File("./src/test/recources/output03.pdf");
+    File in = new File("./src/test/resources/SetPermission.pdf");
+    File out = new File("./src/test/resources/output03.pdf");
     PDDocument orgDocument = null;
     try {
       orgDocument = target.parseDocument(in);
@@ -104,7 +104,7 @@ public class PdfUtilTest {
     PdfUtil target = new PdfUtil();
     PDDocument orgDocument = null;
     try {
-      File pdfFile = new File("./src/test/recources/decrypted.pdf");
+      File pdfFile = new File("./src/test/resources/decrypted.pdf");
       orgDocument = target.parseDocument(pdfFile);
     } catch (IOException e) {
       e.printStackTrace();
@@ -116,7 +116,7 @@ public class PdfUtilTest {
     }
 
     try {
-      File pdfFile = new File("./src/test/recources/SetUserPassword.pdf");
+      File pdfFile = new File("./src/test/resources/SetUserPassword.pdf");
       orgDocument = target.parseDocument(pdfFile);
     } catch (IOException e) {
       e.printStackTrace();
@@ -133,9 +133,9 @@ public class PdfUtilTest {
     PdfUtil target = new PdfUtil();
     PDDocument orgDocument = null;
     try {
-      File pdfFile = new File("./src/test/recources/SetPermission.pdf");
+      File pdfFile = new File("./src/test/resources/SetPermission.pdf");
       orgDocument = target.parseDocument(pdfFile);
-      orgDocument.save("./src/test/recources/output05.pdf");
+      orgDocument.save("./src/test/resources/output05.pdf");
     } catch (IOException | COSVisitorException e) {
       e.printStackTrace();
       fail();
@@ -149,8 +149,8 @@ public class PdfUtilTest {
   @Test
   public void test06() {
     PdfUtil target = new PdfUtil();
-    File pdfFile = new File("./src/test/recources/encrypted.pdf");
-    File outDir = new File("./src/test/recources");
+    File pdfFile = new File("./src/test/resources/encrypted.pdf");
+    File outDir = new File("./src/test/resources");
     int rotation = 90;
     try {
       // 1ページ目を切り出し、右に90度回転
@@ -164,8 +164,8 @@ public class PdfUtilTest {
   @Test
   public void test07() {
     PdfUtil target = new PdfUtil();
-    File pdfFile = new File("./src/test/recources/decrypted.pdf");
-    File outDir = new File("./src/test/recources");
+    File pdfFile = new File("./src/test/resources/decrypted.pdf");
+    File outDir = new File("./src/test/resources");
     int rotation = 90;
     try {
       target.createPdfThisPage(pdfFile, 2, outDir, rotation);
@@ -178,8 +178,8 @@ public class PdfUtilTest {
   @Test
   public void test08() {
     PdfUtil target = new PdfUtil();
-    File pdfFile = new File("./src/test/recources/decrypted.pdf");
-    File outDir = new File("./src/test/recources");
+    File pdfFile = new File("./src/test/resources/decrypted.pdf");
+    File outDir = new File("./src/test/resources");
     int rotation = 90;
     try {
       target.createPdfThisPage(pdfFile, 3, outDir, rotation);
@@ -192,8 +192,8 @@ public class PdfUtilTest {
   @Test
   public void test09() throws IOException {
     PdfUtil target = new PdfUtil();
-    File pdfFile = new File("./src/test/recources/encrypted.pdf");
-    File out = new File("./src/test/recources/output09.jpg");
+    File pdfFile = new File("./src/test/resources/encrypted.pdf");
+    File out = new File("./src/test/resources/output09.jpg");
     FileOutputStream fos = null;
     try {
       fos = new FileOutputStream(out);
@@ -213,8 +213,8 @@ public class PdfUtilTest {
   @Test
   public void test10() throws IOException {
     PdfUtil target = new PdfUtil();
-    File pdfFile = new File("./src/test/recources/PDFA.pdf");
-    File out = new File("./src/test/recources/output10.jpg");
+    File pdfFile = new File("./src/test/resources/PDFA.pdf");
+    File out = new File("./src/test/resources/output10.jpg");
     FileOutputStream fos = null;
     try {
       fos = new FileOutputStream(out);
@@ -236,11 +236,11 @@ public class PdfUtilTest {
     PdfUtil target = new PdfUtil();
     try {
       List<PdfPageModel> pages = new ArrayList<PdfPageModel>();
-      pages.add(new PdfPageModel(new File("./src/test/recources/NO1.pdf"), 1,
+      pages.add(new PdfPageModel(new File("./src/test/resources/NO1.pdf"), 1,
           new BufferedImage(10, 10, BufferedImage.TYPE_BYTE_GRAY), 0));
-      pages.add(new PdfPageModel(new File("./src/test/recources/encrypted.pdf"), 1, new BufferedImage(10, 10,
+      pages.add(new PdfPageModel(new File("./src/test/resources/encrypted.pdf"), 1, new BufferedImage(10, 10,
           BufferedImage.TYPE_BYTE_GRAY), 0));
-      target.mergePdfPageModelToPdfFile(pages, new File("./src/test/recources/output11.pdf"));
+      target.mergePdfPageModelToPdfFile(pages, new File("./src/test/resources/output11.pdf"));
 
     } catch (IOException e) {
       e.printStackTrace();

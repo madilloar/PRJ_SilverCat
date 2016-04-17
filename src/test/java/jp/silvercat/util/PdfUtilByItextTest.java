@@ -32,11 +32,11 @@ public class PdfUtilByItextTest {
   public static byte[] OWNER_PASSWOARD = "World".getBytes();
 
   /** The resulting PDF file. */
-  public static final String RESULT1 = "./src/test/recources/encryption.pdf";
+  public static final String RESULT1 = "./src/test/resources/encryption.pdf";
   /** The resulting PDF file. */
-  public static final String RESULT2 = "./src/test/recources/encryption_decrypted.pdf";
+  public static final String RESULT2 = "./src/test/resources/encryption_decrypted.pdf";
   /** The resulting PDF file. */
-  public static final String RESULT3 = "./src/test/recources/encryption_encrypted.pdf";
+  public static final String RESULT3 = "./src/test/resources/encryption_encrypted.pdf";
 
   @Before
   public void setUp() throws Exception {
@@ -73,8 +73,8 @@ public class PdfUtilByItextTest {
   public void testDecryptPdf2() {
     PdfUtilByItext metadata = new PdfUtilByItext();
     try {
-      String org = "./src/test/recources/SetPermission.pdf";
-      metadata.decryptPdf(org, "./src/test/recources/output1.pdf", "ownerpassword".getBytes());
+      String org = "./src/test/resources/SetPermission.pdf";
+      metadata.decryptPdf(org, "./src/test/resources/output1.pdf", "ownerpassword".getBytes());
     } catch (IOException | DocumentException e) {
       e.printStackTrace();
       fail();

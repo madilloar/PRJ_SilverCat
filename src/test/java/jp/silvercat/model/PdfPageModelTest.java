@@ -59,7 +59,7 @@ public class PdfPageModelTest {
 
   @Test
   public void testHashCode() throws IOException {
-    File pdfFile = new File("./src/test/recources/NO1.pdf");
+    File pdfFile = new File("./src/test/resources/NO1.pdf");
     Image img = this.createDummyImage();
     PdfPageModel exp = new PdfPageModel(pdfFile, 3, img, 0);
     PdfPageModel act = new PdfPageModel(pdfFile, 3, img, 0);
@@ -68,7 +68,7 @@ public class PdfPageModelTest {
 
   @Test
   public void testEqualsObject() throws IOException {
-    File pdfFile = new File("./src/test/recources/NO1.pdf");
+    File pdfFile = new File("./src/test/resources/NO1.pdf");
     Image img = this.createDummyImage();
     PdfPageModel exp = new PdfPageModel(pdfFile, 3, img, 0);
     PdfPageModel act = new PdfPageModel(pdfFile, 3, img, 0);
@@ -78,7 +78,7 @@ public class PdfPageModelTest {
 
   @Test
   public void testToString() {
-    File pdfFile = new File("./src/test/recources/NO1.pdf");
+    File pdfFile = new File("./src/test/resources/NO1.pdf");
     Image img = this.createDummyImage();
     PdfPageModel exp = new PdfPageModel(pdfFile, 3, img, 0);
     PdfPageModel act = new PdfPageModel(pdfFile, 3, img, 0);
@@ -87,7 +87,7 @@ public class PdfPageModelTest {
 
   @Test
   public void testRotate() {
-    File pdfFile = new File("./src/test/recources/NO1.pdf");
+    File pdfFile = new File("./src/test/resources/NO1.pdf");
     Image img = this.createDummyImage();
     PdfPageModel exp = new PdfPageModel(pdfFile, 3, img, 0);
     PdfPageModel act = new PdfPageModel(pdfFile, 3, img, 0);
@@ -140,7 +140,7 @@ public class PdfPageModelTest {
     g2d.setColor(Color.BLACK);
     g2d.drawString("HelloWorld", 50, 50);
     try {
-      ImageIO.write(image, "JPEG", new File("./src/test/recources/temp.jpg"));
+      ImageIO.write(image, "JPEG", new File("./src/test/resources/temp.jpg"));
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
