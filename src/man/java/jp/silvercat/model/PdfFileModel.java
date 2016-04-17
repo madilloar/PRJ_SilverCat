@@ -20,6 +20,7 @@ import jp.silvercat.util.IModelListener;
 import jp.silvercat.util.ModelEvent;
 import jp.silvercat.util.PdfUtil;
 
+@SuppressWarnings("serial")
 public class PdfFileModel implements IModel, Cloneable, Serializable {
   public enum STATUS_CODE {
     LOADING, LOADEND, ADD_PAGE_PROCESSING, ADD_PAGE_PROCESSEND, TEMP_PDF_PAGE_PROCESSING, TEMP_PDF_PAGE_PROCESSEND, CREATE_PDF_FILE_PROCESSING, CREATE_PDF_FILE_PROCESSEND

@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.EventQueue;
+import java.awt.event.KeyEvent;
 
 import javax.swing.DefaultBoundedRangeModel;
 import javax.swing.JButton;
@@ -19,8 +20,7 @@ import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.ScrollPaneConstants;
 
-import jp.silvercat.model.PdfPageModel;
-
+@SuppressWarnings("serial")
 public class PdfView extends JFrame {
 
   private PdfViewModel viewModel_;
@@ -54,6 +54,7 @@ public class PdfView extends JFrame {
   /**
    * Initialize the contents of the frame.
    */
+  @SuppressWarnings("unchecked")
   private void initialize() {
     setBounds(100, 100, 800, 600);
     setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -62,16 +63,26 @@ public class PdfView extends JFrame {
     JMenuBar menuBar = new JMenuBar();
     this.setJMenuBar(menuBar);
 
-    JMenu mnFile = new JMenu("File");
+    JMenu mnFile = new JMenu();
+    mnFile.addMenuListener(this.viewModel_.menuOpenHandler);
+    mnFile.setMnemonic(KeyEvent.VK_1);
+    mnFile.setText("ファイル(1)");// ALT+Fが反応しないので、ALT+1にした。
     menuBar.add(mnFile);
 
+    // ファイルを開く(O)
     JMenuItem mntmFileOpen = new JMenuItem();
     mntmFileOpen.setAction(this.viewModel_.fileOpenHandler);
     mnFile.add(mntmFileOpen);
 
+    // 終了(X)
+    JMenuItem mntmExit = new JMenuItem();
+    mntmExit.setAction(this.viewModel_.exitHandler);
+    mnFile.add(mntmExit);
+
     JPanel pnlOriginal = new JPanel();
     pnlOriginal.setLayout(new BorderLayout(0, 0));
 
+    // PDF ファイルのテーブル
     JTable jtblPdfFiles = new JTable(this.viewModel_.originalPdfFileTableModel);
     jtblPdfFiles.setDefaultEditor(Object.class, null);
     this.viewModel_.originalPdfFileListSelectionModel = jtblPdfFiles.getSelectionModel();
@@ -82,8 +93,15 @@ public class PdfView extends JFrame {
     scrlpnOriginalPdfFiles.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
     pnlOriginal.add(scrlpnOriginalPdfFiles, BorderLayout.NORTH);
 
-    final JList<PdfPageModel> jlstOriginal = new JList<PdfPageModel>();
+    // 入力PDFファイルのサムネイル画像のリスト
+    @SuppressWarnings("rawtypes")
+    final JList jlstOriginal = new JList();
     jlstOriginal.setBackground(Color.LIGHT_GRAY);
+    // ListModel#clear()をすると、at
+    // javax.swing.plaf.basic.BasicListUI.updateLayoutState(BasicListUI.java:1351)
+    // でNullPointerExceptionが発生する。
+    // JListが参照しているデータがなくなるので、セルの高さの計算ができなくてNullPoとなっている模様。
+    // JList#setFixedCellHeight()でセルの高さに固定値をセットしたら解消した。
     jlstOriginal.setFixedCellHeight(150);
     jlstOriginal.setVisibleRowCount(1);
     jlstOriginal.setLayoutOrientation(JList.VERTICAL_WRAP);
@@ -95,24 +113,34 @@ public class PdfView extends JFrame {
     scrlpnOriginalPdfPageImages.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
     pnlOriginal.add(scrlpnOriginalPdfPageImages, BorderLayout.CENTER);
 
+    // 全選択ボタン
     JPanel pnlOriginalButtonArea = new JPanel();
     pnlOriginal.add(pnlOriginalButtonArea, BorderLayout.SOUTH);
     JButton btnOriginalAllSelect = new JButton();
     btnOriginalAllSelect.setAction(this.viewModel_.selectAllOriginalPdfPageListHandler);
     pnlOriginalButtonArea.add(btnOriginalAllSelect);
 
+    // 全選択解除ボタン
     JButton btnAllUnSelect = new JButton();
     btnAllUnSelect.setAction(this.viewModel_.unSelectAllOriginalPdfPageListHandler);
     pnlOriginalButtonArea.add(btnAllUnSelect);
 
+    // 編集エリアへの追加ボタン
     JButton btnAdd = new JButton();
     btnAdd.setAction(this.viewModel_.addEditPdfPageListHandler);
     pnlOriginalButtonArea.add(btnAdd);
 
+    // 編集エリアのサムネイル画像のリスト
     JPanel pnlEdit = new JPanel();
     pnlEdit.setLayout(new BorderLayout(0, 0));
-    JList<PdfPageModel> jlstEdit = new JList<PdfPageModel>();
+    @SuppressWarnings("rawtypes")
+    JList jlstEdit = new JList();
     jlstEdit.setBackground(Color.LIGHT_GRAY);
+    // ListModel#clear()をすると、at
+    // javax.swing.plaf.basic.BasicListUI.updateLayoutState(BasicListUI.java:1351)
+    // でNullPointerExceptionが発生する。
+    // JListが参照しているデータがなくなるので、セルの高さの計算ができなくてNullPoとなっている模様。
+    // JList#setFixedCellHeight()でセルの高さに固定値をセットしたら解消した。
     jlstEdit.setFixedCellHeight(150);
     jlstEdit.setVisibleRowCount(1);
     jlstEdit.setLayoutOrientation(JList.HORIZONTAL_WRAP);
@@ -129,14 +157,17 @@ public class PdfView extends JFrame {
     JPanel pnlEditButtonArea = new JPanel();
     pnlEdit.add(pnlEditButtonArea, BorderLayout.SOUTH);
 
-    JButton btnRemove = new JButton();
-    btnRemove.setAction(this.viewModel_.removeEditPdfPageListHandler);
-    pnlEditButtonArea.add(btnRemove);
+    // 削除ボタン
+    JButton btnDelete = new JButton();
+    btnDelete.setAction(this.viewModel_.deleteEditPdfPageListHandler);
+    pnlEditButtonArea.add(btnDelete);
 
+    // 回転ボタン
     JButton btnRotate = new JButton();
     btnRotate.setAction(this.viewModel_.rotateEditPdfPageListHandler);
     pnlEditButtonArea.add(btnRotate);
 
+    // PDFファイル作成ボタン
     JButton btnCreate = new JButton();
     btnCreate.setAction(this.viewModel_.createPdfHandler);
     pnlEditButtonArea.add(btnCreate);

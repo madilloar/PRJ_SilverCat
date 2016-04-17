@@ -11,8 +11,6 @@ import java.util.List;
 
 import jp.silvercat.model.PdfPageModel;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.pdfbox.exceptions.COSVisitorException;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.util.ImageIOUtil;
@@ -23,7 +21,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class PdfUtilTest {
-  private static final Log LOG = LogFactory.getLog(PdfUtilTest.class);
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {

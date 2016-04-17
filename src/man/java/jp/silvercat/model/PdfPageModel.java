@@ -23,7 +23,9 @@ import jp.silvercat.util.IModelListener;
 import jp.silvercat.util.ModelEvent;
 import jp.silvercat.util.PdfUtil;
 
+@SuppressWarnings("serial")
 public class PdfPageModel implements IModel, Icon, Cloneable, Serializable {
+
   public enum STATUS_CODE {
     PROCESSING, PROCESSEND
   }
@@ -158,10 +160,20 @@ public class PdfPageModel implements IModel, Icon, Cloneable, Serializable {
     return this.toString().compareTo(another.toString());
   }
 
+  /**
+   * このオブジェクトの文字列を返します。
+   * 
+   * @return このオブジェクトの文字列を返します。
+   */
   public String toString() {
     return this.pdfFile.toString() + "," + this.pageNumber + "," + this.rotation;
   }
 
+  /**
+   * ハッシュコードを返します。 このオブジェクトを文字列化して、その文字列のハッシュコードを返します。
+   * 
+   * @return ハッシュコードを返します。
+   */
   public int hashCode() {
     return toString().hashCode();
   }
