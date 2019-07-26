@@ -7,19 +7,17 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import jp.silvercat.model.PdfPageModel;
-
-import org.apache.pdfbox.exceptions.COSVisitorException;
+import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageTree;
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
-import org.apache.pdfbox.pdmodel.encryption.BadSecurityHandlerException;
 import org.apache.pdfbox.pdmodel.encryption.StandardProtectionPolicy;
 import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,459 +25,445 @@ import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.PdfStamper;
 
+import jp.silvercat.model.PdfPageModel;
+
 public class PdfUtil implements IModel {
-  /**
-   * Log instance.
-   */
-  private static final Logger LOG = LoggerFactory.getLogger(PdfUtil.class);
+    /**
+     * Log instance.
+     */
+    private static final Logger LOG = LoggerFactory.getLogger(PdfUtil.class);
 
-  // 進捗状況通知用変数
-  /**
-   * 現在処理しているPDFファイルの全ページ数。
-   */
-  private int processDocumentPagesSize = 0;
-  /**
-   * 現在処理しているPDFファイルのページ番号。
-   */
-  private int processingPageNumber = 0;
+    // 進捗状況通知用変数
+    /**
+     * 現在処理しているPDFファイルの全ページ数。
+     */
+    private int processDocumentPagesSize = 0;
+    /**
+     * 現在処理しているPDFファイルのページ番号。
+     */
+    private int processingPageNumber = 0;
 
-  /**
-   * コンストラクタ。
-   */
-  public PdfUtil() {
+    /**
+     * コンストラクタ。
+     */
+    public PdfUtil() {
 
-  }
-
-  /**
-   * 現在処理しているPDFファイルの全ページ数。
-   * 
-   * @return 現在処理しているPDFファイルの全ページ数。
-   */
-  public int getProcessDocumentPagesSize() {
-    return processDocumentPagesSize;
-  }
-
-  /**
-   * 現在処理しているPDFファイルのページ番号。
-   * 
-   * @return 現在処理しているPDFファイルのページ番号。
-   */
-  public int getProcessingPageNumber() {
-    return processingPageNumber;
-  }
-
-  /**
-   * PDFページモデルをマージします。 PDFページモデルのリストをマージして、outputPdfFileで指定されたPDFファイルに出力します。
-   * PDFページモデルは、PDFファイルのとあるページが、1つのPDFファイルとなっているものです。
-   * 
-   * @param pages
-   *          PDFページモデルのリスト。
-   * @param outputPdfFile
-   *          マージした結果のPDFファイル。
-   * @throws IOException
-   */
-  public void mergePdfPageModelToPdfFile(List<PdfPageModel> pages, File outputPdfFile) throws IOException {
-    this.status = STATUS_CODE.MERGE_PDF_FILE_START;
-
-    PDDocument doc = this.parseDocument(pages.get(0).getPdfFile());
-
-    for (int i = 1; i < pages.size(); i++) {
-      PDDocument pageDoc = this.parseDocument(pages.get(i).getPdfFile());
-      doc.importPage((PDPage) pageDoc.getDocumentCatalog().getAllPages().get(0));
-    }
-    try {
-      doc.save(outputPdfFile);
-    } catch (COSVisitorException e) {
-      throw new IOException(e);
-    } finally {
-      doc.close();
     }
 
-    this.status = STATUS_CODE.MERGE_PDF_FILE_END;
-  }
-
-  /**
-   * PDFファイルにUSER PASSWORDを設定します。 勉強用に作成したメソッド。USER PASSWORDが設定されたPDFファイルを保存し、
-   * それを開くと、そのUSER PASSWORDパスワードが要求されるようになります。
-   * 
-   * @param orgDocument
-   * @param userPassword
-   * @return USER PASSWORDが設定されたPDDocument。
-   * @throws IOException
-   */
-  public PDDocument setUserPassword(PDDocument orgDocument, String ownerPassword, String userPassword) throws IOException {
-    StandardProtectionPolicy pol = new StandardProtectionPolicy(ownerPassword, userPassword,
-        AccessPermission.getOwnerAccessPermission());
-    try {
-      orgDocument.protect(pol);
-    } catch (BadSecurityHandlerException e) {
-      throw new IOException(e);
+    /**
+     * 現在処理しているPDFファイルの全ページ数。
+     *
+     * @return 現在処理しているPDFファイルの全ページ数。
+     */
+    public int getProcessDocumentPagesSize() {
+        return processDocumentPagesSize;
     }
-    return orgDocument;
-  }
 
-  /**
-   * 文書に制限をかけます。 勉強用に作成。印刷のみOKとする制限をかけます。暗号化キー長は128bitです。 文書制限には、OWNER
-   * PASSWORDが必要ですが、このメソッドでは""の空文字列としています。
-   * 
-   * @param orgDocument
-   * @return 印刷のみOKのPDDocument。
-   * @throws IOException
-   */
-  public PDDocument setPermission(PDDocument orgDocument, String ownerPassowrd) throws IOException {
-    AccessPermission ap = new AccessPermission();
-    ap.setCanAssembleDocument(false);
-    ap.setCanExtractContent(false);
-    ap.setCanExtractForAccessibility(false);
-    ap.setCanFillInForm(false);
-    ap.setCanModify(false);
-    ap.setCanModifyAnnotations(false);
-    ap.setCanPrint(true);
-    ap.setCanPrintDegraded(true);
-    StandardProtectionPolicy pol = new StandardProtectionPolicy(ownerPassowrd, "", ap);
-    pol.setEncryptionKeyLength(128);
-    try {
-      orgDocument.protect(pol);
-    } catch (BadSecurityHandlerException e) {
-      throw new IOException(e);
+    /**
+     * 現在処理しているPDFファイルのページ番号。
+     *
+     * @return 現在処理しているPDFファイルのページ番号。
+     */
+    public int getProcessingPageNumber() {
+        return processingPageNumber;
     }
-    return orgDocument;
-  }
 
-  /**
-   * PDFファイルで使用しているフォントの一覧。 勉強用。
-   * 
-   * @param orgDocument
-   */
-  @SuppressWarnings({ "unchecked", "unused" })
-  private void printDocumentFonts(PDDocument orgDocument) {
-    int i = 0;
-    for (PDPage page : (List<PDPage>) orgDocument.getDocumentCatalog().getAllPages()) {
-      i++;
-      Map<String, PDFont> pageFonts = page.getResources().getFonts();
-      Set<String> keys = pageFonts.keySet();
-      for (String key : keys) {
-        LOG.debug("pageNum(" + i + "),pageFont key:" + key);
-        PDFont font = pageFonts.get(key);
-        LOG.debug(",font:" + font.getBaseFont());
-      }
-    }
-  }
+    /**
+     * PDFページモデルをマージします。 PDFページモデルのリストをマージして、outputPdfFileで指定されたPDFファイルに出力します。
+     * PDFページモデルは、PDFファイルのとあるページが、1つのPDFファイルとなっているものです。
+     *
+     * @param pages PDFページモデルのリスト。
+     * @param outputPdfFile マージした結果のPDFファイル。
+     * @throws IOException
+     */
+    public void mergePdfPageModelToPdfFile(List<PdfPageModel> pages, File outputPdfFile) throws IOException {
+        this.status = STATUS_CODE.MERGE_PDF_FILE_START;
 
-  /**
-   * selectPageNumberで指定されたページをoutputDirで指定されたディレクトリにPDFファイルとして作成します。
-   * その時、rotation(0,90,180,270のいずれか)で指定された角度でページを回転してからPDFファイルを作成します。 問題:
-   * PDFファイルにフォントが埋め込んであり、 且つ、このプログラムを利用しているマシンにそのフォントがインストールされていない、 且つ、OWNER
-   * PASSWORD(権限パスワード)により、「ページの抽出:許可しない」などの文書制限がかかっていると、
-   * ページを切り出して新たにPDFファイルを作ると、新たにできたPDFファイルでそのフォントを失う。 解決策: iTextのOWNER
-   * PASSWORD解除を利用する。 (PDFBOXにはその機能がなさそう)
-   * 
-   * @param inputPdfFile
-   * @param selectPageNumber
-   * @param outputDir
-   * @param rotation
-   * @return 作成されたPDFファイルのFileオブジェクト。
-   * @throws IOException
-   */
-  public File createPdfThisPage(File inputPdfFile, int selectPageNumber, File outputDir, int rotation) throws IOException {
-    this.status = STATUS_CODE.CREATE_PDF_THIS_PAGE_NUMBER_START;
-    File outputPdfFile = null;
-    PDDocument orgDocument = null;
-    PDDocument newDocument = null;
-    try {
-      // iTextのOWNERパスワード解除を使う。オーナーパスワードは””で試している。
-      orgDocument = this.parseDocument(inputPdfFile);
-      newDocument = new PDDocument();
+        PDDocument doc = this.parseDocument(pages.get(0).getPdfFile());
 
-      PDPage newPage = (PDPage) orgDocument.getDocumentCatalog().getAllPages().get(selectPageNumber - 1);
-      // ページの回転。
-      newPage.setRotation(rotation);
-      newDocument.importPage(newPage);
-
-      String orgFileName = inputPdfFile.getName();
-      String fileName = outputDir.toString() + "/" + this.getPreffix(orgFileName) + "-" + selectPageNumber + ".pdf";
-
-      outputPdfFile = new File(fileName);
-      newDocument.save(outputPdfFile);
-    } catch (COSVisitorException e) {
-      throw new IOException(e);
-    } finally {
-      if (newDocument != null) {
-        newDocument.close();
-      }
-      if (orgDocument != null) {
-        orgDocument.close();
-      }
-    }
-    this.status = STATUS_CODE.CREATE_PDF_THIS_PAGE_NUMBER_END;
-    this.notifyListeners();
-
-    return outputPdfFile;
-  }
-
-  /**
-   * PDFファイルを読み、PDFページモデルのListとして返します。 PDFページモデルにはページのサムネイル画像を保持します。
-   * 時間のかかる処理なので、1ページ処理するごとにリスナーに通知します。
-   * サムネイル画像の画像タイプは、BufferedImage.TYPE_BYTE_INDEXEDで作ります。
-   * 
-   * @param inputPdfFile
-   *          PDFファイルのFileオブジェクト。
-   * @return PDFページモデルのListとして返します。
-   */
-  public List<PdfPageModel> loadPdf(File inputPdfFile) {
-    return loadPdf(inputPdfFile, BufferedImage.TYPE_BYTE_INDEXED);
-  }
-
-  /**
-   * PDFファイルを読み、PDFページモデルのListとして返します。 PDFページモデルにはページのサムネイル画像を保持します。
-   * 時間のかかる処理なので、1ページ処理するごとにリスナーに通知します。
-   * 
-   * @param inputPdfFile
-   *          PDFファイルのFileオブジェクト。
-   * @param imageType
-   *          サムネイル画像の画像タイプ。BufferedImage.TYPE_INT_RGBとか。
-   * @return PDFページモデルのListとして返します。
-   */
-  public List<PdfPageModel> loadPdf(File inputPdfFile, int imageType) {
-    this.status = STATUS_CODE.LOAD_PDF_START;
-
-    List<PdfPageModel> list = new CopyOnWriteArrayList<PdfPageModel>();
-    PDDocument document = null;
-    try {
-      document = this.parseDocument(inputPdfFile);
-
-      @SuppressWarnings("unchecked")
-      List<PDPage> pages = document.getDocumentCatalog().getAllPages();
-      processDocumentPagesSize = pages.size();
-      for (int i = 0; i < processDocumentPagesSize; i++) {
-        PDPage page = pages.get(i);
-        BufferedImage img = page.convertToImage();
-        int w = (int) page.findCropBox().getWidth();
-        int h = (int) page.findCropBox().getHeight();
-        int r = page.findRotation();
-        LOG.debug("w:" + w + ",h:" + h + ",r:" + r);
-        if (w > h || r == 90 || r == 270) {
-          w = 141;
-          h = 100;
-        } else {
-          w = 100;
-          h = 141;
+        for (int i = 1; i < pages.size(); i++) {
+            PDDocument pageDoc = this.parseDocument(pages.get(i).getPdfFile());
+            doc.importPage((PDPage) pageDoc.getDocumentCatalog().getPages().get(0));
+        }
+        try {
+            doc.save(outputPdfFile);
+        } finally {
+            doc.close();
         }
 
-        BufferedImage thumbnail = new BufferedImage(w, h, imageType);
-        thumbnail.getGraphics().drawImage(img, 0, 0, w, h, null);
+        this.status = STATUS_CODE.MERGE_PDF_FILE_END;
+    }
 
-        PdfPageModel pageModel = new PdfPageModel(inputPdfFile, i + 1, thumbnail, r);
+    /**
+     * PDFファイルにUSER PASSWORDを設定します。 勉強用に作成したメソッド。USER PASSWORDが設定されたPDFファイルを保存し、
+     * それを開くと、そのUSER PASSWORDパスワードが要求されるようになります。
+     *
+     * @param orgDocument
+     * @param userPassword
+     * @return USER PASSWORDが設定されたPDDocument。
+     * @throws IOException
+     */
+    public PDDocument setUserPassword(PDDocument orgDocument, String ownerPassword, String userPassword)
+            throws IOException {
+        StandardProtectionPolicy pol = new StandardProtectionPolicy(ownerPassword, userPassword,
+                AccessPermission.getOwnerAccessPermission());
+        orgDocument.protect(pol);
+        return orgDocument;
+    }
 
-        list.add(pageModel);
-        // Model Changed Notify
-        this.processingPageNumber = i;
+    /**
+     * 文書に制限をかけます。 勉強用に作成。印刷のみOKとする制限をかけます。暗号化キー長は128bitです。 文書制限には、OWNER
+     * PASSWORDが必要ですが、このメソッドでは""の空文字列としています。
+     *
+     * @param orgDocument
+     * @return 印刷のみOKのPDDocument。
+     * @throws IOException
+     */
+    public PDDocument setPermission(PDDocument orgDocument, String ownerPassowrd) throws IOException {
+        AccessPermission ap = new AccessPermission();
+        ap.setCanAssembleDocument(false);
+        ap.setCanExtractContent(false);
+        ap.setCanExtractForAccessibility(false);
+        ap.setCanFillInForm(false);
+        ap.setCanModify(false);
+        ap.setCanModifyAnnotations(false);
+        ap.setCanPrint(true);
+        ap.setCanPrintDegraded(true);
+        StandardProtectionPolicy pol = new StandardProtectionPolicy(ownerPassowrd, "", ap);
+        pol.setEncryptionKeyLength(128);
+        orgDocument.protect(pol);
+        return orgDocument;
+    }
+
+    /**
+     * PDFファイルで使用しているフォントの一覧。 勉強用。
+     *
+     * @param orgDocument
+     * @throws IOException
+     */
+    @SuppressWarnings({ "unchecked", "unused" })
+    private void printDocumentFonts(PDDocument orgDocument) throws IOException {
+        int i = 0;
+        for (PDPage page : (List<PDPage>) orgDocument.getDocumentCatalog().getPages()) {
+            i++;
+            Iterable<COSName> pageFonts = page.getResources().getFontNames();
+            for (COSName cosName : pageFonts) {
+                LOG.debug("pageNum(" + i + "),pageFont key:" + cosName.getName());
+                PDFont font = page.getResources().getFont(cosName);
+                LOG.debug(",font:" + font.toString());
+            }
+        }
+    }
+
+    /**
+     * selectPageNumberで指定されたページをoutputDirで指定されたディレクトリにPDFファイルとして作成します。
+     * その時、rotation(0,90,180,270のいずれか)で指定された角度でページを回転してからPDFファイルを作成します。 問題:
+     * PDFファイルにフォントが埋め込んであり、 且つ、このプログラムを利用しているマシンにそのフォントがインストールされていない、 且つ、OWNER
+     * PASSWORD(権限パスワード)により、「ページの抽出:許可しない」などの文書制限がかかっていると、
+     * ページを切り出して新たにPDFファイルを作ると、新たにできたPDFファイルでそのフォントを失う。 解決策: iTextのOWNER
+     * PASSWORD解除を利用する。 (PDFBOXにはその機能がなさそう)
+     *
+     * @param inputPdfFile
+     * @param selectPageNumber
+     * @param outputDir
+     * @param rotation
+     * @return 作成されたPDFファイルのFileオブジェクト。
+     * @throws IOException
+     */
+    public File createPdfThisPage(File inputPdfFile, int selectPageNumber, File outputDir, int rotation)
+            throws IOException {
+        this.status = STATUS_CODE.CREATE_PDF_THIS_PAGE_NUMBER_START;
+        File outputPdfFile = null;
+        PDDocument orgDocument = null;
+        PDDocument newDocument = null;
+        try {
+            // iTextのOWNERパスワード解除を使う。オーナーパスワードは””で試している。
+            orgDocument = this.parseDocument(inputPdfFile);
+            newDocument = new PDDocument();
+
+            PDPage newPage = (PDPage) orgDocument.getDocumentCatalog().getPages().get(selectPageNumber - 1);
+            // ページの回転。
+            newPage.setRotation(rotation);
+            newDocument.importPage(newPage);
+
+            String orgFileName = inputPdfFile.getName();
+            String fileName = outputDir.toString() + "/" + this.getPreffix(orgFileName) + "-" + selectPageNumber
+                    + ".pdf";
+
+            outputPdfFile = new File(fileName);
+            newDocument.save(outputPdfFile);
+        } finally {
+            if (newDocument != null) {
+                newDocument.close();
+            }
+            if (orgDocument != null) {
+                orgDocument.close();
+            }
+        }
+        this.status = STATUS_CODE.CREATE_PDF_THIS_PAGE_NUMBER_END;
         this.notifyListeners();
-      }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    } finally {
-      try {
-        if (document != null) {
-          document.close();
+
+        return outputPdfFile;
+    }
+
+    /**
+     * PDFファイルを読み、PDFページモデルのListとして返します。 PDFページモデルにはページのサムネイル画像を保持します。
+     * 時間のかかる処理なので、1ページ処理するごとにリスナーに通知します。
+     * サムネイル画像の画像タイプは、BufferedImage.TYPE_BYTE_INDEXEDで作ります。
+     *
+     * @param inputPdfFile PDFファイルのFileオブジェクト。
+     * @return PDFページモデルのListとして返します。
+     */
+    public List<PdfPageModel> loadPdf(File inputPdfFile) {
+        return loadPdf(inputPdfFile, BufferedImage.TYPE_BYTE_INDEXED);
+    }
+
+    /**
+     * PDFファイルを読み、PDFページモデルのListとして返します。 PDFページモデルにはページのサムネイル画像を保持します。
+     * 時間のかかる処理なので、1ページ処理するごとにリスナーに通知します。
+     *
+     * @param inputPdfFile PDFファイルのFileオブジェクト。
+     * @param imageType サムネイル画像の画像タイプ。BufferedImage.TYPE_INT_RGBとか。
+     * @return PDFページモデルのListとして返します。
+     */
+    public List<PdfPageModel> loadPdf(File inputPdfFile, int imageType) {
+        this.status = STATUS_CODE.LOAD_PDF_START;
+
+        List<PdfPageModel> list = new CopyOnWriteArrayList<PdfPageModel>();
+        PDDocument document = null;
+        try {
+            document = this.parseDocument(inputPdfFile);
+
+            PDFRenderer pdfRenderer = new PDFRenderer(document);
+            PDPageTree pageTree = document.getDocumentCatalog().getPages();
+            int pageCounter = 0;
+            for (PDPage page : pageTree) {
+                BufferedImage img = pdfRenderer.renderImageWithDPI(pageCounter++, 300, ImageType.RGB);
+
+                int w = (int) page.getCropBox().getWidth();
+                int h = (int) page.getCropBox().getHeight();
+                int r = page.getRotation();
+                LOG.debug("w:" + w + ",h:" + h + ",r:" + r);
+                if (w > h || r == 90 || r == 270) {
+                    w = 141;
+                    h = 100;
+                } else {
+                    w = 100;
+                    h = 141;
+                }
+
+                BufferedImage thumbnail = new BufferedImage(w, h, imageType);
+                thumbnail.getGraphics().drawImage(img, 0, 0, w, h, null);
+
+                PdfPageModel pageModel = new PdfPageModel(inputPdfFile, pageCounter + 1, thumbnail, r);
+
+                list.add(pageModel);
+                // Model Changed Notify
+                this.processingPageNumber = pageCounter;
+                this.notifyListeners();
+            }
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            try {
+                if (document != null) {
+                    document.close();
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+        this.status = STATUS_CODE.LOAD_PDF_END;
+        return list;
     }
-    this.status = STATUS_CODE.LOAD_PDF_END;
-    return list;
-  }
 
-  /**
-   * PDFファイルの各ページをイメージListとして返します。 勉強用に作成。
-   * 
-   * @param inputPdfFile
-   * @param imageType
-   * @return PDFファイルの各ページをイメージListとして返します。
-   */
-  public List<BufferedImage> pdfToImage(File inputPdfFile, int imageType) {
-    List<BufferedImage> list = new CopyOnWriteArrayList<BufferedImage>();
-    PDDocument document = null;
-    try {
-      document = this.parseDocument(inputPdfFile);
-
-      @SuppressWarnings("unchecked")
-      List<PDPage> pages = document.getDocumentCatalog().getAllPages();
-      processDocumentPagesSize = pages.size();
-      for (int i = 0; i < processDocumentPagesSize; i++) {
-        PDPage page = pages.get(i);
-        BufferedImage img = page.convertToImage();
-        list.add(img);
-      }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    } finally {
-      try {
-        if (document != null) {
-          document.close();
+    /**
+     * PDFファイルの各ページをイメージListとして返します。 勉強用に作成。
+     *
+     * @param inputPdfFile
+     * @param imageType
+     * @return PDFファイルの各ページをイメージListとして返します。
+     */
+    public List<BufferedImage> pdfToImage(File inputPdfFile, int imageType) {
+        List<BufferedImage> list = new CopyOnWriteArrayList<BufferedImage>();
+        PDDocument document = null;
+        try {
+            document = this.parseDocument(inputPdfFile);
+            PDFRenderer pdfRenderer = new PDFRenderer(document);
+            PDPageTree pageTree = document.getDocumentCatalog().getPages();
+            int pageCounter = 0;
+            for (PDPage page : pageTree) {
+                BufferedImage img = pdfRenderer.renderImageWithDPI(pageCounter++, 300, ImageType.RGB);
+                list.add(img);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            try {
+                if (document != null) {
+                    document.close();
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    }
-    return list;
-  }
-
-  /**
-   * PDFファイルを解析し、PDDocumentオブジェクトとして返します。 暗号化されていたら、OWNER PASSWORDを""で解除を試みます。
-   * 
-   * @param inputPdfFile
-   * @return PDDocumentオブジェクト。
-   * @throws IOException
-   */
-  public PDDocument parseDocument(File inputPdfFile) throws IOException {
-    // TODO
-    // return this.parseDocument(inputPdfFile, "");
-    return this.parseDocument(inputPdfFile, "ownerpassword");
-  }
-
-  /**
-   * PDFファイルを解析し、PDDocumentオブジェクトとして返します。 暗号化されていたら、OWNER PASSWORDで解除を試みます。
-   * 
-   * @param inputPdfFile
-   * @return PDDocumentオブジェクト。
-   * @throws IOException
-   */
-  public PDDocument parseDocument(File inputPdfFile, String ownerPassword) throws IOException {
-    PDDocument document = PDDocument.load(inputPdfFile);
-
-    if (document.isEncrypted()) {
-      document.close();
-      byte[] decrypt = this.decryptPdf(inputPdfFile, ownerPassword.getBytes());
-      document = PDDocument.load(new ByteArrayInputStream(decrypt));
+        return list;
     }
 
-    return document;
-  }
+    /**
+     * PDFファイルを解析し、PDDocumentオブジェクトとして返します。 暗号化されていたら、OWNER PASSWORDを""で解除を試みます。
+     *
+     * @param inputPdfFile
+     * @return PDDocumentオブジェクト。
+     * @throws IOException
+     */
+    public PDDocument parseDocument(File inputPdfFile) throws IOException {
+        // TODO
+        // return this.parseDocument(inputPdfFile, "");
+        return this.parseDocument(inputPdfFile, "ownerpassword");
+    }
 
-  /**
-   * PDFファイルのOWNER PASSWORDを解除します。
-   * 
-   * @param inputPdfFile
-   * @param ownerPassword
-   * @return
-   * @throws IOException
-   */
-  private byte[] decryptPdf(File inputPdfFile, byte[] ownerPassword) throws IOException {
-    ByteArrayOutputStream dest = null;
-    PdfReader reader = null;
-    PdfStamper stamper = null;
-    try {
-      dest = new ByteArrayOutputStream();
-      reader = new PdfReader(new FileInputStream(inputPdfFile), ownerPassword);
-      stamper = new PdfStamper(reader, dest);
-    } catch (IOException e) {
-      throw e;
-    } catch (DocumentException e) {
-      throw new IOException(e);
-    } finally {
-      try {
-        if (stamper != null) {
-          stamper.close();
+    /**
+     * PDFファイルを解析し、PDDocumentオブジェクトとして返します。 暗号化されていたら、OWNER PASSWORDで解除を試みます。
+     *
+     * @param inputPdfFile
+     * @return PDDocumentオブジェクト。
+     * @throws IOException
+     */
+    public PDDocument parseDocument(File inputPdfFile, String ownerPassword) throws IOException {
+        PDDocument document = PDDocument.load(inputPdfFile);
+
+        if (document.isEncrypted()) {
+            document.close();
+            byte[] decrypt = this.decryptPdf(inputPdfFile, ownerPassword.getBytes());
+            document = PDDocument.load(new ByteArrayInputStream(decrypt));
         }
-      } catch (DocumentException e) {
-        throw new IOException(e);
-      }
-      if (reader != null) {
-        reader.close();
-      }
+
+        return document;
     }
-    return dest.toByteArray();
-  }
 
-  /**
-   * ファイル名から拡張子を取り除いた名前を返します。
-   * 
-   * @param fileName
-   *          ファイル名
-   * @return ファイル名
-   */
-  private String getPreffix(String fileName) {
-    if (fileName == null)
-      return null;
-    int point = fileName.lastIndexOf(".");
-    if (point != -1) {
-      return fileName.substring(0, point);
+    /**
+     * PDFファイルのOWNER PASSWORDを解除します。
+     *
+     * @param inputPdfFile
+     * @param ownerPassword
+     * @return
+     * @throws IOException
+     */
+    private byte[] decryptPdf(File inputPdfFile, byte[] ownerPassword) throws IOException {
+        ByteArrayOutputStream dest = null;
+        PdfReader reader = null;
+        PdfStamper stamper = null;
+        try {
+            dest = new ByteArrayOutputStream();
+            reader = new PdfReader(new FileInputStream(inputPdfFile), ownerPassword);
+            stamper = new PdfStamper(reader, dest);
+        } catch (IOException e) {
+            throw e;
+        } catch (DocumentException e) {
+            throw new IOException(e);
+        } finally {
+            try {
+                if (stamper != null) {
+                    stamper.close();
+                }
+            } catch (DocumentException e) {
+                throw new IOException(e);
+            }
+            if (reader != null) {
+                reader.close();
+            }
+        }
+        return dest.toByteArray();
     }
-    return fileName;
-  }
 
-  //
-  // IModelインターフェースの実装
-  //
-  /**
-   * 処理状況を監視するリスナーを保存。
-   */
-  private List<IModelListener> listeners = new CopyOnWriteArrayList<IModelListener>();
-  /**
-   * 処理状況を通知するためのイベントオブジェクト。
-   */
-  private ModelEvent event = null;
-
-  /**
-   * ステータスコードのenum。
-   */
-  public enum STATUS_CODE implements IStatusCode {
-    LOAD_PDF_START, LOAD_PDF_END, CREATE_PDF_THIS_PAGE_NUMBER_START, CREATE_PDF_THIS_PAGE_NUMBER_END, MERGE_PDF_FILE_START, MERGE_PDF_FILE_END, END;
-  }
-
-  /**
-   * ステータス。
-   */
-  private IStatusCode status = null;
-
-  /**
-   * リスナーを登録します。
-   */
-  @Override
-  public void addModelListener(IModelListener l) {
-    this.listeners.add(l);
-  }
-
-  /**
-   * リスナーに変更を通知します。
-   */
-
-  @Override
-  public void notifyListeners() {
-    for (IModelListener listener : listeners) {
-      if (this.event == null) {
-        this.event = new ModelEvent(this);
-      }
-      listener.modelChanged(this.event);
+    /**
+     * ファイル名から拡張子を取り除いた名前を返します。
+     *
+     * @param fileName ファイル名
+     * @return ファイル名
+     */
+    private String getPreffix(String fileName) {
+        if (fileName == null)
+            return null;
+        int point = fileName.lastIndexOf(".");
+        if (point != -1) {
+            return fileName.substring(0, point);
+        }
+        return fileName;
     }
-  }
 
-  /**
-   * ステータスコード取得。
-   * 
-   * @return ステータスコード。
-   */
-  @Override
-  public IStatusCode getStatus() {
-    return this.status;
-  }
+    //
+    // IModelインターフェースの実装
+    //
+    /**
+     * 処理状況を監視するリスナーを保存。
+     */
+    private List<IModelListener> listeners = new CopyOnWriteArrayList<IModelListener>();
+    /**
+     * 処理状況を通知するためのイベントオブジェクト。
+     */
+    private ModelEvent event = null;
 
-  /**
-   * リスナーを解除します。
-   */
-  @Override
-  public void removeModelListner(IModelListener l) {
-    this.listeners.remove(l);
-  }
+    /**
+     * ステータスコードのenum。
+     */
+    public enum STATUS_CODE implements IStatusCode {
+        LOAD_PDF_START, LOAD_PDF_END, CREATE_PDF_THIS_PAGE_NUMBER_START, CREATE_PDF_THIS_PAGE_NUMBER_END, MERGE_PDF_FILE_START, MERGE_PDF_FILE_END, END;
+    }
 
-  /**
-   * クローズ処理。
-   */
-  @Override
-  public void close() {
-    this.status = STATUS_CODE.END;
-    this.notifyListeners();
-  }
+    /**
+     * ステータス。
+     */
+    private IStatusCode status = null;
+
+    /**
+     * リスナーを登録します。
+     */
+    @Override
+    public void addModelListener(IModelListener l) {
+        this.listeners.add(l);
+    }
+
+    /**
+     * リスナーに変更を通知します。
+     */
+
+    @Override
+    public void notifyListeners() {
+        for (IModelListener listener : listeners) {
+            if (this.event == null) {
+                this.event = new ModelEvent(this);
+            }
+            listener.modelChanged(this.event);
+        }
+    }
+
+    /**
+     * ステータスコード取得。
+     *
+     * @return ステータスコード。
+     */
+    @Override
+    public IStatusCode getStatus() {
+        return this.status;
+    }
+
+    /**
+     * リスナーを解除します。
+     */
+    @Override
+    public void removeModelListner(IModelListener l) {
+        this.listeners.remove(l);
+    }
+
+    /**
+     * クローズ処理。
+     */
+    @Override
+    public void close() {
+        this.status = STATUS_CODE.END;
+        this.notifyListeners();
+    }
 }
