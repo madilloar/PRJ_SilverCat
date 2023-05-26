@@ -1,3 +1,17 @@
+https://svn.apache.org/viewvc/pdfbox/branches/2.0/examples/src/main/java/org/apache/pdfbox/examples/signature/
+
+# 2023/05/26(金):keytoolを使って電子証明書の元ネタを作る
+
+C:\pleiades-2022-12\java\11\bin\keytool -genkeypair -alias mycert -keyalg RSA -keysize 2048 -sigalg SHA256withRSA -dname "cn=madilloar, ou=mydep, o=mycorp, l=Tokyo, st=Chiyoda-ku, c=JP" -validity 3560 -storetype PKCS12 -keystore C:\Users\lemac\keystore.p12 -storepass password!
+
+# 2023/05/16 ChatGPTを使ってPDFファイルに電子署名するプロンプト
+公開鍵暗号にはRSAアルゴリズムを使用してX509電子証明書をPEM形式で出力し、公開鍵をPEM形式で出力し、秘密鍵をパスワードで暗号化してPEM形式で出力するJavaコードを生成してください。
+Javaコード生成時には、必要なメソッドをstep by stepで生成してください。
+
+PEM形式のX509電子証明書を利用してPDFファイルに電子署名するJavaコードを生成してください。
+PDFBoxライブラリBuncyCastleライブラリを利用してください。
+
+
 # 2014/01/01 12:50
 ## 事象:
 オリジナルPDFファイルのページのサムネイルイメージを表示しているエリアを全選択した後に、
