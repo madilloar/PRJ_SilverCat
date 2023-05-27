@@ -23,7 +23,6 @@ import javax.swing.ScrollPaneConstants;
 import jp.silvercat.util.IModelListener;
 import jp.silvercat.util.ModelEvent;
 
-@SuppressWarnings("serial")
 public class PdfView extends JFrame implements IModelListener {
 
   /**

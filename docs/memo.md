@@ -1,6 +1,9 @@
-https://svn.apache.org/viewvc/pdfbox/branches/2.0/examples/src/main/java/org/apache/pdfbox/examples/signature/
+# 2023/05/27(土):itextからの脱却
+文書を開くパスワード付きPDFファイルを読めるように対応した。
+ただし、いまいちいけてないインスタンス変数に持ってしまっている。どうするのがよいだろうか？
 
 # 2023/05/26(金):keytoolを使って電子証明書の元ネタを作る
+https://svn.apache.org/viewvc/pdfbox/branches/2.0/examples/src/main/java/org/apache/pdfbox/examples/signature/
 
 C:\pleiades-2022-12\java\11\bin\keytool -genkeypair -alias mycert -keyalg RSA -keysize 2048 -sigalg SHA256withRSA -dname "cn=madilloar, ou=mydep, o=mycorp, l=Tokyo, st=Chiyoda-ku, c=JP" -validity 3560 -storetype PKCS12 -keystore C:\Users\lemac\keystore.p12 -storepass password!
 
