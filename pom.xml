@@ -22,9 +22,9 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-assembly-plugin</artifactId>
-				<version>2.5.2</version>
+				<version>3.3.0</version>
 				<configuration>
-					<finalName>PdfView</finalName>
+					<finalName>PdfViewer</finalName>
 					<descriptorRefs>
 						<descriptorRef>jar-with-dependencies</descriptorRef>
 					</descriptorRefs>
@@ -33,6 +33,9 @@
 							<mainClass>jp.silvercat.PdfView</mainClass>
 						</manifest>
 					</archive>
+					<outputDirectory>${project.basedir}</outputDirectory>
+					<finalName>PdfViewer</finalName>
+					<appendAssemblyId>false</appendAssemblyId>
 				</configuration>
 				<executions>
 					<execution>
