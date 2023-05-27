@@ -12,16 +12,15 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import jp.silvercat.util.IModel;
 import jp.silvercat.util.IModelListener;
 import jp.silvercat.util.IStatusCode;
 import jp.silvercat.util.ModelEvent;
 import jp.silvercat.util.PdfUtil;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-@SuppressWarnings("serial")
 public class PdfFileModel implements IModel, Cloneable, Serializable {
   private static final Logger LOG = LoggerFactory.getLogger(PdfFileModel.class);
 
