@@ -31,13 +31,15 @@ public class PdfPageModel implements IModel, Icon, Cloneable, Serializable {
 	private int pageNumber = 0;
 	private ImageIcon pdfPageImage = null;
 	private int rotation = 0;
+	private final String userPassword_;
 
-	public PdfPageModel(File pdfFile, int pageNumber, Image img, int rotation) {
+	public PdfPageModel(File pdfFile, int pageNumber, Image img, int rotation, String userPassword) {
 		this.pdfFile = pdfFile;
 		// 1ページ目のpageNumerは1
 		this.pageNumber = pageNumber;
 		this.pdfPageImage = new ImageIcon(img);
 		this.rotation = rotation;
+		this.userPassword_ = userPassword;
 	}
 
 	public File getPdfFile() {
@@ -85,7 +87,7 @@ public class PdfPageModel implements IModel, Icon, Cloneable, Serializable {
 		this.status = STATUS_CODE.PROCESSING;
 		File file = this.pdfFile;
 		PdfUtil u = new PdfUtil();
-		File outputPdfFile = u.createPdfThisPage(file, this.pageNumber, outputDir, this.rotation);
+		File outputPdfFile = u.createPdfThisPage(file, this.pageNumber, outputDir, this.rotation, this.userPassword_);
 		this.pdfFile = outputPdfFile;
 		this.pageNumber = 1;
 		this.status = STATUS_CODE.PROCESSEND;

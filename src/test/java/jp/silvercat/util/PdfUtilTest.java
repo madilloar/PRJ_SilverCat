@@ -84,7 +84,7 @@ public class PdfUtilTest {
 		File out = new File("./src/test/resources/output03.pdf");
 		PDDocument orgDocument = null;
 		try {
-			orgDocument = target.parseDocument(in);
+			orgDocument = target.parseDocument(in, "");
 			orgDocument.save(out);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -103,7 +103,7 @@ public class PdfUtilTest {
 		PDDocument orgDocument = null;
 		try {
 			File pdfFile = new File("./src/test/resources/decrypted.pdf");
-			orgDocument = target.parseDocument(pdfFile);
+			orgDocument = target.parseDocument(pdfFile, "");
 		} catch (Exception e) {
 			e.printStackTrace();
 			fail();
@@ -139,7 +139,7 @@ public class PdfUtilTest {
 		PDDocument orgDocument = null;
 		try {
 			File pdfFile = new File("./src/test/resources/SetPermission.pdf");
-			orgDocument = target.parseDocument(pdfFile);
+			orgDocument = target.parseDocument(pdfFile, "");
 			orgDocument.save("./src/test/resources/output05.pdf");
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -162,7 +162,7 @@ public class PdfUtilTest {
 		int rotation = 90;
 		try {
 			// 1ページ目を切り出し、右に90度回転
-			target.createPdfThisPage(pdfFile, 1, outDir, rotation);
+			target.createPdfThisPage(pdfFile, 1, outDir, rotation, "");
 		} catch (Throwable e) {
 			e.printStackTrace();
 			fail();
@@ -176,7 +176,7 @@ public class PdfUtilTest {
 		File outDir = new File("./src/test/resources");
 		int rotation = 90;
 		try {
-			target.createPdfThisPage(pdfFile, 2, outDir, rotation);
+			target.createPdfThisPage(pdfFile, 2, outDir, rotation, "");
 		} catch (Exception e) {
 			e.printStackTrace();
 			fail();
@@ -193,7 +193,7 @@ public class PdfUtilTest {
 		File outDir = new File("./src/test/resources");
 		int rotation = 90;
 		try {
-			target.createPdfThisPage(pdfFile, 3, outDir, rotation);
+			target.createPdfThisPage(pdfFile, 3, outDir, rotation, "");
 		} catch (Exception e) {
 			e.printStackTrace();
 			fail();
@@ -260,10 +260,10 @@ public class PdfUtilTest {
 		try {
 			List<PdfPageModel> pages = new ArrayList<PdfPageModel>();
 			pages.add(new PdfPageModel(new File("./src/test/resources/NO1.pdf"), 1,
-					new BufferedImage(10, 10, BufferedImage.TYPE_BYTE_GRAY), 0));
-			pages.add(new PdfPageModel(new File("./src/test/resources/encrypted.pdf"), 1, new BufferedImage(10, 10,
-					BufferedImage.TYPE_BYTE_GRAY), 0));
-			target.mergePdfPageModelToPdfFile(pages, new File("./src/test/resources/output11.pdf"));
+					new BufferedImage(10, 10, BufferedImage.TYPE_BYTE_GRAY), 0, ""));
+			pages.add(new PdfPageModel(new File("./src/test/resources/encrypted.pdf"), 1,
+					new BufferedImage(10, 10, BufferedImage.TYPE_BYTE_GRAY), 0, ""));
+			target.mergePdfPageModelToPdfFile(pages, new File("./src/test/resources/output11.pdf"), "");
 
 		} catch (Exception e) {
 			e.printStackTrace();

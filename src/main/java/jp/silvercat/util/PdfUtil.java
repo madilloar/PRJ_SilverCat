@@ -72,14 +72,15 @@ public class PdfUtil implements IModel {
 	 * @param outputPdfFile マージした結果のPDFファイル。
 	 * @throws IOException
 	 */
-	public void mergePdfPageModelToPdfFile(List<PdfPageModel> pages, File outputPdfFile) throws IOException {
+	public void mergePdfPageModelToPdfFile(List<PdfPageModel> pages, File outputPdfFile, String userPassword) throws IOException {
 		this.status = STATUS_CODE.MERGE_PDF_FILE_START;
 
-		PDDocument doc = this.parseDocument(pages.get(0).getPdfFile());
+		PDDocument doc = this.parseDocument(pages.get(0).getPdfFile(), userPassword);
 
 		for (int i = 1; i < pages.size(); i++) {
-			PDDocument pageDoc = this.parseDocument(pages.get(i).getPdfFile());
+			PDDocument pageDoc = this.parseDocument(pages.get(i).getPdfFile(), userPassword);
 			doc.importPage((PDPage) pageDoc.getDocumentCatalog().getPages().get(0));
+			this.notifyListeners();
 		}
 		try {
 			doc.save(outputPdfFile);
@@ -88,6 +89,7 @@ public class PdfUtil implements IModel {
 		}
 
 		this.status = STATUS_CODE.MERGE_PDF_FILE_END;
+		this.notifyListeners();
 	}
 
 	/**
@@ -167,15 +169,14 @@ public class PdfUtil implements IModel {
 	 * @return 作成されたPDFファイルのFileオブジェクト。
 	 * @throws IOException
 	 */
-	public File createPdfThisPage(File inputPdfFile, int selectPageNumber, File outputDir, int rotation)
+	public File createPdfThisPage(File inputPdfFile, int selectPageNumber, File outputDir, int rotation, String userPassword)
 			throws IOException {
 		this.status = STATUS_CODE.CREATE_PDF_THIS_PAGE_NUMBER_START;
 		File outputPdfFile = null;
 		PDDocument orgDocument = null;
 		PDDocument newDocument = null;
 		try {
-			// iTextのOWNERパスワード解除を使う。オーナーパスワードは""で試している。
-			orgDocument = this.parseDocument(inputPdfFile);
+			orgDocument = this.parseDocument(inputPdfFile, userPassword);
 			newDocument = new PDDocument();
 
 			PDPage newPage = (PDPage) orgDocument.getDocumentCatalog().getPages().get(selectPageNumber - 1);
@@ -210,9 +211,10 @@ public class PdfUtil implements IModel {
 	 *
 	 * @param inputPdfFile PDFファイルのFileオブジェクト。
 	 * @return PDFページモデルのListとして返します。
+	 * @throws InvalidPasswordException 
 	 */
-	public List<PdfPageModel> loadPdf(File inputPdfFile) {
-		return loadPdf(inputPdfFile, BufferedImage.TYPE_BYTE_INDEXED);
+	public List<PdfPageModel> loadPdf(File inputPdfFile, String userPassword) throws InvalidPasswordException {
+		return loadPdf(inputPdfFile, BufferedImage.TYPE_BYTE_INDEXED, userPassword);
 	}
 
 	/**
@@ -222,21 +224,22 @@ public class PdfUtil implements IModel {
 	 * @param inputPdfFile PDFファイルのFileオブジェクト。
 	 * @param imageType サムネイル画像の画像タイプ。BufferedImage.TYPE_INT_RGBとか。
 	 * @return PDFページモデルのListとして返します。
+	 * @throws InvalidPasswordException 
 	 */
-	public List<PdfPageModel> loadPdf(File inputPdfFile, int imageType) {
+	public List<PdfPageModel> loadPdf(File inputPdfFile, int imageType, String userPassword) throws InvalidPasswordException {
 		this.status = STATUS_CODE.LOAD_PDF_START;
 
 		List<PdfPageModel> list = new CopyOnWriteArrayList<PdfPageModel>();
 		PDDocument document = null;
 		try {
-			document = this.parseDocument(inputPdfFile);
+			document = this.parseDocument(inputPdfFile, userPassword);
 
 			PDFRenderer pdfRenderer = new PDFRenderer(document);
 			PDPageTree pageTree = document.getDocumentCatalog().getPages();
 			int pageCounter = 0;
 			for (PDPage page : pageTree) {
 				pageCounter++;
-				// renderImageWithDPIの第一引数はゼロベースインデックス
+				// renderImageWithDPIの第一引数のpageCounterはゼロベースインデックス
 				BufferedImage img = pdfRenderer.renderImageWithDPI(pageCounter - 1, 300, ImageType.RGB);
 
 				int w = (int) page.getCropBox().getWidth();
@@ -254,14 +257,16 @@ public class PdfUtil implements IModel {
 				BufferedImage thumbnail = new BufferedImage(w, h, imageType);
 				thumbnail.getGraphics().drawImage(img, 0, 0, w, h, null);
 
-				PdfPageModel pageModel = new PdfPageModel(inputPdfFile, pageCounter, thumbnail, r);
+				// PdfPageModelの第二引数のpageCounterは1ベースインデックス
+				PdfPageModel pageModel = new PdfPageModel(inputPdfFile, pageCounter, thumbnail, r, userPassword);
 
 				list.add(pageModel);
 				// Model Changed Notify
 				this.processingPageNumber = pageCounter;
 				this.notifyListeners();
 			}
-
+		} catch (InvalidPasswordException e) {
+			throw e;
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		} finally {
@@ -274,6 +279,7 @@ public class PdfUtil implements IModel {
 			}
 		}
 		this.status = STATUS_CODE.LOAD_PDF_END;
+		this.notifyListeners();
 		return list;
 	}
 
@@ -284,11 +290,12 @@ public class PdfUtil implements IModel {
 	 * @param imageType
 	 * @return PDFファイルの各ページをイメージListとして返します。
 	 */
+	@SuppressWarnings("unused")
 	public List<BufferedImage> pdfToImage(File inputPdfFile, int imageType) {
 		List<BufferedImage> list = new CopyOnWriteArrayList<BufferedImage>();
 		PDDocument document = null;
 		try {
-			document = this.parseDocument(inputPdfFile);
+			document = this.parseDocument(inputPdfFile, "");
 			PDFRenderer pdfRenderer = new PDFRenderer(document);
 			PDPageTree pageTree = document.getDocumentCatalog().getPages();
 			int pageCounter = 0;
@@ -317,7 +324,7 @@ public class PdfUtil implements IModel {
 	 * @return PDDocumentオブジェクト。
 	 * @throws IOException
 	 */
-	public PDDocument parseDocument(File inputPdfFile) throws IOException {
+	private PDDocument parseDocument2(File inputPdfFile) throws IOException {
 		return this.parseDocument(inputPdfFile, "");
 	}
 
@@ -332,7 +339,7 @@ public class PdfUtil implements IModel {
 	public PDDocument parseDocument(File inputPdfFile, String userPassword) throws IOException {
 		PDDocument document = null;
 		try {
-			document = PDDocument.load(inputPdfFile);
+			document = PDDocument.load(inputPdfFile, userPassword);
 			if (document.isEncrypted()) {
 				// 文書を開くパスワードが施されていなくとも、OWNER PASSWORDを用いてPDFのセキュリティ(文書のコピーを許可しないなど)が設定されている場合があります。
 				// この場合、ここでsetAllSecurityToBeRemoved(true)をしておかないと、この後の処理で、
