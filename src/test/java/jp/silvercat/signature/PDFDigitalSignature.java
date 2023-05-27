@@ -169,6 +169,7 @@ public class PDFDigitalSignature {
 	 * @throws CertificateException
 	 * @throws UnrecoverableKeyException
 	 */
+	@SuppressWarnings("unused")
 	private DigitalSignatureUtil createSigner(File keystoreFilePath, String alias, String password)
 			throws KeyStoreException, FileNotFoundException, IOException,
 			NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException {
